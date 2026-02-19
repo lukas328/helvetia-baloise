@@ -1,35 +1,439 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mesoneer AI-Accelerator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "react": "https://esm.sh/react@18",
-          "react-dom/client": "https://esm.sh/react-dom@18/client",
-          "htm": "https://esm.sh/htm@3",
-          "lucide-react": "https://esm.sh/lucide-react",
-          "react-syntax-highlighter": "https://esm.sh/react-syntax-highlighter@15",
-          "react-syntax-highlighter/dist/esm/styles/prism": "https://esm.sh/react-syntax-highlighter@15/dist/esm/styles/prism",
-          "recharts": "https://esm.sh/recharts@2"
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mesoneer | AI Speedboat Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            base: { 950: '#050708', 900: '#0b1114', 800: '#121a1f' }
+          }
         }
       }
-    </script>
-    <style>
-      body { margin: 0; font-family: Inter, system-ui, sans-serif; }
-      .fade-enter { animation: fade .35s ease; }
-      @keyframes fade { from { opacity: .15; transform: translateY(6px);} to { opacity:1; transform:none; } }
-      .pulse-dot { animation: pulse 1.4s infinite; }
-      @keyframes pulse { 0%{opacity:.4;transform:scale(.9)} 70%{opacity:1;transform:scale(1)} 100%{opacity:.4;transform:scale(.9)} }
-      .typing-cursor::after { content: "▋"; animation: blink 1s steps(1) infinite; margin-left: 2px; }
-      @keyframes blink { 50% { opacity: 0; } }
-    </style>
-  </head>
-  <body class="bg-slate-100">
-    <div id="root"></div>
-    <script type="module" src="./src/app.js"></script>
-  </body>
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    .canvas-grid {background-image: linear-gradient(rgba(148,163,184,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.08) 1px, transparent 1px); background-size: 24px 24px;}
+    .print-view {background:#f8fafc!important;color:#0f172a!important}
+    .print-view .bg-base-900,.print-view .bg-base-800,.print-view .bg-base-950 {background:#fff!important}
+    .print-view .border-slate-700,.print-view .border-slate-800 {border-color:#0f172a33!important}
+    .print-view .text-slate-100,.print-view .text-slate-200,.print-view .text-slate-300,.print-view .text-slate-400 {color:#0f172a!important}
+    .print-view .canvas-grid {background-image: linear-gradient(rgba(15,23,42,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,.06) 1px, transparent 1px);}
+  </style>
+</head>
+<body class="bg-base-950 text-slate-100 font-sans transition-colors duration-200">
+<div id="app" class="min-h-screen">
+  <header class="sticky top-0 z-40 border-b border-slate-800 bg-base-950/90 backdrop-blur">
+    <div class="mx-auto max-w-[1500px] px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <button id="menuBtn" class="md:hidden p-2 rounded border border-slate-700">☰</button>
+        <div class="font-semibold tracking-wide">mesoneer <span class="text-emerald-400">|</span> AI Speedboat Demo</div>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <button id="themeToggle" class="px-3 py-1.5 rounded border border-slate-700 hover:border-emerald-400 transition">Dark/Light</button>
+        <button id="printToggle" class="px-3 py-1.5 rounded border border-slate-700 hover:border-emerald-400 transition">Print View</button>
+      </div>
+    </div>
+  </header>
+  <div class="mx-auto max-w-[1500px] px-4 py-4 md:py-6 flex gap-4">
+    <aside id="drawer" class="fixed md:static inset-y-0 left-0 w-72 md:w-64 bg-base-900 border-r border-slate-800 p-4 transform -translate-x-full md:translate-x-0 transition duration-200 z-50 overflow-y-auto"></aside>
+    <div class="flex-1">
+      <main id="content"></main>
+    </div>
+  </div>
+</div>
+<script>
+const MM = {
+architectureLayers: `flowchart LR
+  subgraph SRC[Operational Source Systems]
+    S1[Policy Admin]
+    S2[Commission Engine]
+    S3[Partner/Agent Master]
+    S4[Reference Data / FX]
+  end
+
+  subgraph STG[STG_INS Raw Landing]
+    STG1[STG_POLICY]
+    STG2[STG_PRODUCT]
+    STG3[STG_PARTY]
+    STG4[STG_*_EVENT]
+  end
+
+  subgraph WRK[WRK_INS Integration]
+    WRK1[WRK_POLICY / WRK_PRODUCT / WRK_PARTY]
+    WRK2[WRK_*_EVENT]
+    WRK3[WRK_REFERENCE]
+    WRK4[WRK_REJECT]
+  end
+
+  subgraph CORE[DWH_CORE Enterprise Canonical]
+    C1[Master + Reference Dimensions]
+    C2[Policy/Agent Relationships]
+    C3[Premium / Provision / Payout / Adjustment Transactions]
+    C4[CORE_FX_RATE]
+    C5[CORE_RECORD_LINEAGE]
+  end
+
+  subgraph DM[DM_VERSICHERUNG Sales Provisioning Mart]
+    D1[Dimensions]
+    D2[Bridges]
+    D3[Fact Accrual]
+    D4[Fact Payout]
+    D5[Fact Adjustment]
+  end
+
+  subgraph CTL[CTL_INS Control and Quality]
+    T1[CTL_BATCH_RUN]
+    T2[CTL_BATCH_STEP]
+    T3[CTL_DQ_RESULT]
+    T4[CTL_RECON_RESULT]
+    T5[CTL_WATERMARK]
+    T6[CTL_ALERT]
+  end
+
+  SRC --> STG --> WRK --> CORE --> DM
+  WRK --> WRK4
+  CORE --> C5
+
+  ETL[SAS Batch Orchestrator]
+  ETL --> DM
+  ETL --> CTL`,
+orchestrationSequence: `sequenceDiagram
+  autonumber
+  participant SCH as Scheduler
+  participant SAS as run_dm_sales_provisioning.sas
+  participant CTL as CTL_INS
+  participant CORE as DWH_CORE
+  participant DM as DM_VERSICHERUNG
+
+  SCH->>SAS: Trigger batch
+  SAS->>CTL: Insert CTL_BATCH_RUN (RUNNING)
+  SAS->>CTL: Log RUN_START
+
+  loop Mapping Steps 01..13
+    SAS->>CORE: Read source entities/events
+    SAS->>DM: Upsert dimensions/bridges/facts
+    SAS->>CTL: Log step metrics
+  end
+
+  SAS->>DM: Execute DQ checks (quality/01)
+  SAS->>CTL: Insert CTL_DQ_RESULT
+
+  SAS->>DM: Execute reconciliation (quality/02)
+  SAS->>CTL: Insert CTL_RECON_RESULT
+
+  alt No blocking errors
+    SAS->>CTL: Update CTL_BATCH_RUN to SUCCEEDED
+    SAS->>CTL: Upsert CTL_WATERMARK for 3 core txn entities
+    SAS->>CTL: Log RUN_END (SUCCEEDED)
+  else Blocking DQ/Recon error
+    SAS->>CTL: Update CTL_BATCH_RUN to FAILED
+    SAS->>CTL: Log RUN_END (FAILED)
+    SAS-->>SCH: Abort/CANCEL
+  end`,
+coreEr: `erDiagram
+  CORE_PARTY {
+    bigint party_key PK
+    varchar source_party_id
+    varchar party_type
+    date valid_from
+    date valid_to
+    char is_current
+  }
+
+  CORE_PARTY_ROLE {
+    bigint party_role_key PK
+    bigint party_key FK
+    varchar role_type_code
+    varchar role_identifier
+    date valid_from
+    date valid_to
+  }
+
+  CORE_PRODUCT {
+    bigint product_key PK
+    varchar source_product_id
+    varchar product_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_POLICY {
+    bigint policy_key PK
+    varchar source_policy_id
+    varchar policy_number
+    bigint policyholder_party_key FK
+    bigint product_key FK
+    date valid_from
+    date valid_to
+  }
+
+  CORE_POLICY_AGENT_ASSIGNMENT {
+    bigint policy_agent_assignment_key PK
+    bigint policy_key FK
+    bigint agent_party_role_key FK
+    bigint supervisor_party_role_key FK
+    bigint org_unit_key FK
+    bigint channel_key FK
+    decimal credit_split_percent
+    date valid_from
+    date valid_to
+  }
+
+  CORE_ORG_UNIT {
+    bigint org_unit_key PK
+    varchar source_org_unit_id
+    varchar org_unit_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_CHANNEL {
+    bigint channel_key PK
+    varchar source_channel_id
+    varchar channel_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_COMMISSION_PLAN {
+    bigint commission_plan_key PK
+    varchar source_plan_id
+    varchar plan_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_COMMISSION_RULE {
+    bigint commission_rule_key PK
+    varchar source_rule_id
+    bigint commission_plan_key FK
+    varchar rule_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_DATE {
+    int date_key PK
+    date calendar_date
+  }
+
+  CORE_CURRENCY {
+    char currency_key PK
+    varchar currency_name
+  }
+
+  CORE_FX_RATE {
+    bigint fx_rate_key PK
+    int rate_date_key FK
+    char from_currency_key FK
+    char to_currency_key FK
+    decimal fx_rate
+  }
+
+  CORE_PREMIUM_TRANSACTION {
+    bigint premium_txn_key PK
+    varchar source_premium_txn_id
+    bigint policy_key FK
+    int booking_date_key FK
+    char currency_key FK
+    decimal gross_amount
+    decimal net_amount
+  }
+
+  CORE_PROVISION_TRANSACTION {
+    bigint provision_txn_key PK
+    varchar source_provision_event_id
+    bigint premium_txn_key FK
+    bigint policy_key FK
+    bigint agent_party_role_key FK
+    bigint commission_plan_key FK
+    bigint commission_rule_key FK
+    bigint org_unit_key FK
+    bigint channel_key FK
+    int event_effective_date_key FK
+    char currency_key FK
+  }
+
+  CORE_PAYOUT_TRANSACTION {
+    bigint payout_txn_key PK
+    varchar source_payout_id
+    bigint provision_txn_key FK
+    bigint agent_party_role_key FK
+    bigint org_unit_key FK
+    int payout_date_key FK
+    char currency_key FK
+  }
+
+  CORE_REASON {
+    bigint reason_key PK
+    varchar source_reason_id
+    varchar reason_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_ADJUSTMENT_TRANSACTION {
+    bigint adjustment_txn_key PK
+    varchar source_adjustment_id
+    bigint provision_txn_key FK
+    bigint agent_party_role_key FK
+    bigint reason_key FK
+    int adjustment_date_key FK
+    char currency_key FK
+  }
+
+  CORE_PARTY ||--o{ CORE_PARTY_ROLE : has
+  CORE_PARTY ||--o{ CORE_POLICY : policyholder
+  CORE_PRODUCT ||--o{ CORE_POLICY : product
+
+  CORE_POLICY ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : assignment
+  CORE_PARTY_ROLE ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : agent
+  CORE_PARTY_ROLE ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : supervisor
+  CORE_ORG_UNIT ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : in_org
+  CORE_CHANNEL ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : in_channel
+
+  CORE_COMMISSION_PLAN ||--o{ CORE_COMMISSION_RULE : contains
+
+  CORE_POLICY ||--o{ CORE_PREMIUM_TRANSACTION : has
+  CORE_DATE ||--o{ CORE_PREMIUM_TRANSACTION : booking_date
+  CORE_CURRENCY ||--o{ CORE_PREMIUM_TRANSACTION : currency
+
+  CORE_PREMIUM_TRANSACTION ||--o{ CORE_PROVISION_TRANSACTION : derives
+  CORE_POLICY ||--o{ CORE_PROVISION_TRANSACTION : policy
+  CORE_PARTY_ROLE ||--o{ CORE_PROVISION_TRANSACTION : agent
+  CORE_COMMISSION_PLAN ||--o{ CORE_PROVISION_TRANSACTION : plan
+  CORE_COMMISSION_RULE ||--o{ CORE_PROVISION_TRANSACTION : rule
+  CORE_ORG_UNIT ||--o{ CORE_PROVISION_TRANSACTION : org
+  CORE_CHANNEL ||--o{ CORE_PROVISION_TRANSACTION : channel
+  CORE_DATE ||--o{ CORE_PROVISION_TRANSACTION : event_date
+  CORE_CURRENCY ||--o{ CORE_PROVISION_TRANSACTION : currency
+
+  CORE_PROVISION_TRANSACTION ||--o{ CORE_PAYOUT_TRANSACTION : payout
+  CORE_PROVISION_TRANSACTION ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjustment
+
+  CORE_PARTY_ROLE ||--o{ CORE_PAYOUT_TRANSACTION : payee
+  CORE_ORG_UNIT ||--o{ CORE_PAYOUT_TRANSACTION : payout_org
+  CORE_DATE ||--o{ CORE_PAYOUT_TRANSACTION : payout_date
+  CORE_CURRENCY ||--o{ CORE_PAYOUT_TRANSACTION : payout_currency
+
+  CORE_PARTY_ROLE ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjusted_agent
+  CORE_REASON ||--o{ CORE_ADJUSTMENT_TRANSACTION : reason
+  CORE_DATE ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjustment_date
+  CORE_CURRENCY ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjustment_currency
+
+  CORE_DATE ||--o{ CORE_FX_RATE : rate_date
+  CORE_CURRENCY ||--o{ CORE_FX_RATE : from_ccy
+  CORE_CURRENCY ||--o{ CORE_FX_RATE : to_ccy`,
+controlQuality: `flowchart TD
+  A[Batch Trigger] --> B[CTL_BATCH_RUN insert RUNNING]
+  B --> C[Mapping Steps 01..13]
+  C --> D[CTL_BATCH_STEP logs]
+
+  C --> E[DQ Assertions]
+  E --> F[CTL_DQ_RESULT inserts]
+
+  F --> G[Reconciliation Metrics]
+  G --> H[CTL_RECON_RESULT inserts]
+
+  H --> I{g_has_error > 0?}
+  I -- No --> J[Set run status SUCCEEDED]
+  I -- Yes --> K[Set run status FAILED]
+
+  J --> L[Update CTL_BATCH_RUN end_ts + status]
+  K --> L
+
+  L --> M{Status SUCCEEDED?}
+  M -- Yes --> N[Upsert CTL_WATERMARK for CORE transaction entities]
+  M -- No --> O[Abort batch]
+
+  N --> P[Log RUN_END in CTL_BATCH_STEP]
+  O --> P
+
+  Q[CTL_ALERT table exists] -. currently not populated .-> P`
+};
+
+const NAV = [
+['/', 'Overview', 'OV'], ['phase-0','Phase 0','0'],['phase-1','Phase 1','1'],['phase-2','Phase 2','2'],['phase-3','Phase 3','3'],['phase-4','Phase 4','4'],['phase-5','Phase 5','5'],['phase-6','Phase 6','6'],['phase-7','Phase 7','7'],['transition','Transition','T']
+];
+const phaseMeta = {
+'phase-0':{title:'Phase 0: AI-Setup',facts:{Input:'Azure Best Practices / Security Vorgaben, vorhandene Komponenten',Aktivitäten:'AI Hub aufsetzen, Secrets/Access, Logging/Redaction, Agent Runtime',Deliverables:'AI Hub Referenzarchitektur, Security Checklist, PoC Readiness',Ziel:'Schaffung des Fundaments – AI-PoC Umgebung, Agents/Workflows, Security & Governance.',Mehrwert:['Sicherer Rahmen','Wiederverwendbarer AI Hub','Schneller Start']},talk:['Zentraler AI Hub als einheitlicher Einstieg.','Security/Logging sind vom ersten Tag integriert.','Agents können ab Phase 1 direkt produktiv im PoC laufen.']},
+'phase-1':{title:'Phase 1: Data Gathering & Scope',facts:{Input:'Scope/Prioritäten, KPI Referenzen, SAS EG/DI Artefakte, SQL/DB2, Cobol, Shell, Python, Scheduler/Cron, Logs, Reports, Dokus',Aktivitäten:'Sammlung/Extraktion, Artefakt-Inventar, Klassifikation (Layer/Domain), Abhängigkeiten, PoC Scope, Erfolgskriterien',Deliverables:'Artefakt-Inventar + Klassifikation, Domänen/Layers, PoC Scope Doc',Ziel:'IST-Transparenz + klarer PoC Scope',Mehrwert:['Schneller Überblick über kritische Assets','Klare Priorisierung für Pilot-Use-Cases','Messbare Erfolgskriterien für Stakeholder']},talk:['Inventarisierung schafft belastbare Grundlage.','Klassifikation verbindet Technik und Business-Kontext.','Scope bleibt schlank und umsetzbar.']},
+'phase-2':{title:'Phase 2: Architecture Reconstruction (IST)',facts:{Input:'Phase-1 Inventar, Pipeline-Jobs, DDLs, Mermaid-basierte Rekonstruktion',Aktivitäten:'Layer-Modell rekonstruieren, Orchestrierung modellieren, Gaps markieren',Deliverables:'IST-Layer View, Sequenzfluss, Gap-Dokumentation',Ziel:'Sichtbarkeit auf technische Wirkzusammenhänge',Mehrwert:['Schneller Konsens über IST','Kritische Lücken früh sichtbar','Basis für gezielte Refactoring-Schritte']},talk:['Layer-View zeigt Systemgrenzen klar.','Sequenzmodell macht Kontrollpunkte explizit.','Visibility Gaps werden konkret benannt.']},
+'phase-3':{title:'Phase 3: Business Logic & KPI Extraction',facts:{Input:'SAS Orchestrator + Mapping Scripts + Core Tabellen',Aktivitäten:'Call-Chain Analyse, Rule Extraktion, KPI Spezifikation',Deliverables:'Call-Chain Graph, KPI Spec, Rule Notes',Ziel:'Business-Logik nachvollziehbar und testbar machen',Mehrwert:['Regeln werden transparent','KPI-Herkunft ist belegbar','SME-Review wird beschleunigt']},talk:['KPI wird bis zur Quelle heruntergebrochen.','Rules erhalten klare fachliche Notizen.','Source-Referenzen unterstützen Auditierbarkeit.']},
+'phase-4':{title:'Phase 4: Mapping IST → Target (Medallion)',facts:{Input:'IST Modelle + KPI/Assets + Zielarchitektur',Aktivitäten:'IST zu Bronze/Silver/Gold mappen, Refactoring-Hinweise ableiten',Deliverables:'Mapping Matrix, Target Objects, Pattern Hints',Ziel:'Migrationspfad mit klaren Zielobjekten',Mehrwert:['Technischer und fachlicher Brückenschlag','Konkrete Landing-Zonen pro Asset','Umsetzung wird planbar']},talk:['Matrix macht Transformation pragmatisch.','Medallion-Layer zeigen Zielzustand kompakt.','Row-to-Layer Highlighting unterstützt Diskussionen.']},
+'phase-5':{title:'Phase 5: Baseline Validation',facts:{Input:'Golden Dataset, Alt- und Prototyp-Läufe, Toleranzen',Aktivitäten:'Vergleich Alt/Neu, Varianz-Analyse, Decision Logging',Deliverables:'Comparator Output, Decision Log, DQ/Reconciliation Sicht',Ziel:'Vertrauen in Ergebnisqualität herstellen',Mehrwert:['Abweichungen früh erkannt','SME-Entscheidungen dokumentiert','Gezielte Retests']},talk:['Vergleich macht Abweichungen sofort sichtbar.','Decision Log hält fachliche Entscheidungen fest.','Toleranzen steuern objektive Freigabe.']},
+'phase-6':{title:'Phase 6: Refactoring & Improvement',facts:{Input:'Validation Findings, Performance- und Qualitätsprobleme',Aktivitäten:'Pattern-Auswahl, Before/After Design, Priorisierung',Deliverables:'Pattern Board, erwartete Effekte, Umsetzungsreihenfolge',Ziel:'Qualität + Betriebssicherheit steigern',Mehrwert:['Weniger Daten-Drift','Bessere Nachvollziehbarkeit','Stabilerer Betrieb']},talk:['Patterns beschleunigen technische Entscheidungen.','Before/After macht Nutzen klar quantifizierbar.','Komplexität wird offen kommuniziert.']},
+'phase-7':{title:'Phase 7: Validation (Regression Pack)',facts:{Input:'Regression Testkatalog, Gold-Datenversion, Pipeline Run Evidence',Aktivitäten:'Tests ausführen, Varianzen prüfen, Evidence paketieren',Deliverables:'Regression Tabelle, Evidence Card, Trend-Sparklines',Ziel:'Release-fähige Qualitätsaussage',Mehrwert:['Objektive Go/No-Go Signale','Reproduzierbare Testläufe','Auditierbare Nachweise']},talk:['Regression Pack verdichtet Qualitätslage.','Evidence schafft Reproduzierbarkeit.','Sparklines zeigen Stabilität über Zeit.']},
+'transition':{title:'Transition Plan',facts:{Input:'Ergebnisse Phase 0-7',Aktivitäten:'Roadmap, Team-Rollen, Betriebsmodell',Deliverables:'90-Tage Transition Plan, Governance Set-up, KPI Cockpit',Ziel:'Geordnete Überführung in Delivery',Mehrwert:['Schneller Start im Zielbild','Klare Verantwortungen','Messbarer Fortschritt']},talk:['Vom PoC zur belastbaren Delivery.','Governance und Betrieb früh etablieren.','Quick Wins + mittelfristige Initiativen kombinieren.']}
+};
+
+const el = (id)=>document.getElementById(id);
+function renderNav(){
+  el('drawer').innerHTML = `<div class="text-slate-400 text-xs mb-3">Navigation</div>${NAV.map(([r,t,b])=>`<a href="#/${r==='/'?'':r}" class="block px-3 py-2 rounded border mb-2 transition ${location.hash===`#/${r==='/'?'':r}`||(!location.hash&&r==='/')?'border-emerald-400 bg-emerald-400/10':'border-slate-800 hover:border-slate-600'}"><span class="inline-flex w-6 h-6 items-center justify-center text-xs rounded-full bg-slate-800 mr-2">${b}</span>${t}</a>`).join('')}`;
+}
+function renderFacts(f){ return `<div class="rounded-xl border border-slate-700 bg-base-900 p-4 space-y-2"><h3 class="font-semibold">Phase Facts</h3>${Object.entries(f).map(([k,v])=>`<div><div class="text-xs text-slate-400">${k}</div>${Array.isArray(v)?`<ul class="list-disc ml-4">${v.map(x=>`<li>${x}</li>`).join('')}</ul>`:`<div class="text-sm">${v}</div>`}</div>`).join('')}</div>`; }
+function renderTalk(points){ return `<div class="rounded-xl border border-slate-700 bg-base-900 p-4"><h3 class="font-semibold mb-2">Demo Talking Points</h3><ul class="list-disc ml-4 text-sm space-y-1">${points.map(p=>`<li>${p}</li>`).join('')}</ul></div>`; }
+function deepDive(title,inner){ return `<details class="rounded-xl border border-slate-700 bg-base-900 p-4"><summary class="cursor-pointer font-medium">${title}</summary><div class="mt-3 text-sm">${inner}</div></details>`; }
+
+function overviewCanvas(){
+ const steps=[['phase-0','AI Setup','Fundament für sicheren PoC-Betrieb.'],['phase-1','Scope Selection','Artefakte, Prioritäten und Scope definiert.'],['phase-2','Architecture Reconstruction','IST-Struktur und Kontrollfluss sichtbar.'],['phase-3','Business Logic & KPI','KPI-Logik und Rule-Chain extrahiert.'],['phase-4','Mapping','IST auf Medallion-Target gemappt.'],['phase-5','Baseline Validation','Alt/Neu Vergleich mit Decision Log.'],['phase-6','Refactoring','Patterns für Qualität und Skalierung.'],['phase-7','Validation','Regression Pack mit Evidence.'],['transition','Transition Plan','Roadmap zur Delivery.']];
+ return `<div class="h-full p-6 overflow-auto"><div class="grid md:grid-cols-9 gap-3">${steps.map((s,i)=>`<a href="#/${s[0]}" class="rounded-lg border border-slate-700 p-3 hover:border-emerald-400 transition"><div class="text-xs text-emerald-400">${i}</div><div class="font-semibold text-sm">${s[1]}</div><div class="text-xs text-slate-400 mt-1">${s[2]}</div></a>`).join('')}</div></div>`;
+}
+function canvasPhase0(){return `<div class="h-full p-4"><div class="grid gap-3 h-full"><div class="grid grid-cols-4 gap-2 rounded border border-slate-700 p-2"><b class="col-span-4 text-emerald-400">Security & Governance</b>${['Entra ID (RBAC)','Key Vault','Policy/Guardrails','Audit Logging'].map(x=>`<div class="border border-slate-700 rounded p-2 text-xs">${x}</div>`).join('')}</div><div class="grid grid-cols-5 gap-2 rounded border border-slate-700 p-2"><b class="col-span-5 text-emerald-400">AI Runtime</b>${['Web UI','Orchestrator/Agent Runner','Azure OpenAI','Prompt Templates','Content Filters'].map(x=>`<div class="border border-slate-700 rounded p-2 text-xs">${x}</div>`).join('')}</div><div class="grid grid-cols-5 gap-2 rounded border border-slate-700 p-2"><b class="col-span-5 text-emerald-400">Data & Knowledge</b>${['Artefakt Store','Metadata DB','Vector Index/Search','Evidence Log Storage',''].map(x=>x?`<div class="border border-slate-700 rounded p-2 text-xs">${x}</div>`:'').join('')}</div></div><div class="text-xs mt-2 flex gap-2 justify-end">${['Demo data only','Audit-ready','Reproducible runs','Private data: OFF'].map(x=>`<span class="px-2 py-1 border border-emerald-500/40 rounded bg-emerald-500/10">${x}</span>`).join('')}</div></div>`;}
+function canvasPhase1(){
+ const rows=[['sas/run_dm_sales_provisioning.sas','Orchestrator','CORE→DM','Vertrieb','High','Unassigned','Discovered'],['sas/mapping/11_fact_vertriebsprovisionsereignis.sas','Mapping','DM','Vertrieb','High','Unassigned','Discovered'],['sas/macros/m_fact_upsert.sas','Macro','Shared','Plattform','Medium','Unassigned','Discovered'],['ddl/40_dm_sales_provisioning_layer.sql','DDL','DM','Vertrieb','Low','Unassigned','Discovered'],['quality/02_reconciliation_core_vs_dm.sas','Quality','CTL','Plattform','Medium','Unassigned','Discovered'],['documentation/diagrams/01_architecture_layers.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],['documentation/diagrams/02_orchestration_sequence.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],['STG_INS.*','Schema','STG','Plattform','?','?','DDL only']];
+ return `<div class="h-full p-4 overflow-auto"><div class="flex flex-wrap gap-2 mb-3"><input placeholder="Search" class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><select class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><option>Layer</option></select><select class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><option>Type</option></select><select class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><option>Domain</option></select><button id="exportCsv" class="ml-auto px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/40">Export Inventory</button></div><div class="grid grid-cols-3 gap-2 mb-3 text-sm">${[['DB2 Tables total',64],['SAS Mapping Scripts',13],['Quality Checks',2]].map(x=>`<div class="rounded border border-slate-700 p-2"><div class="text-slate-400 text-xs">${x[0]}</div><div class="font-semibold">${x[1]}</div></div>`).join('')}</div><div class="text-xs text-right mb-2"><span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10">Agent: Data Gathering / Classification • Run ID: DEMO-001</span></div><table id="inventoryTbl" class="w-full text-xs"><thead><tr class="text-slate-400">${['Artifact','Type','Layer','Domain','Complexity','Owner','Status'].map(h=>`<th class="text-left p-1">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr class="border-t border-slate-800">${r.map(c=>`<td class="p-1">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function canvasPhase2(){return `<div class="h-full p-4 relative"><div class="mb-2 flex gap-2"><button data-tab="layer" class="tabBtn px-3 py-1 border border-slate-700 rounded">Layer View</button><button data-tab="orch" class="tabBtn px-3 py-1 border border-slate-700 rounded">Orchestration View</button></div><div id="tab-layer" class="tabPane h-[85%] overflow-auto relative"><span class="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-amber-500/20 border border-amber-500/50">Visibility Gap</span><div class="mermaid">${MM.architectureLayers}</div><div class="text-xs text-slate-400">Upstream ETL (STG→WRK→CORE) strukturell vorhanden, aber im Repo nicht sichtbar.</div></div><div id="tab-orch" class="tabPane hidden h-[85%] overflow-auto"><div class="mermaid">${MM.orchestrationSequence}</div><div class="absolute right-4 top-16 p-3 border border-slate-700 rounded bg-base-900 text-xs"><b>Key Observations</b><ul class="list-disc ml-4"><li>Mapping Steps 01..13</li><li>DQ → CTL_DQ_RESULT</li><li>Reconciliation → CTL_RECON_RESULT</li></ul></div></div></div>`}
+function canvasPhase3(){
+ const nodes=[['n1',80,90,'run_dm_sales_provisioning.sas','Orchestrator'],['n2',280,90,'mapping/11_fact...sas','Mapping'],['n3',500,90,'macro: m_fact_upsert','Macro'],['n4',740,90,'DM: FKT_VERTRIEBSPROVISIONSEREIGNIS','Fact'],['n5',280,230,'CORE_PROVISION_TRANSACTION','Source'],['n6',500,230,'CORE_FX_RATE','Source'],['n7',640,230,'Rule: FX fallback (≤5 days)','Business Rule']];
+ return `<div class="h-full p-3 relative"><svg viewBox="0 0 980 340" class="w-full h-[75%]">${[['n1','n2'],['n2','n3'],['n3','n4'],['n5','n2'],['n6','n7'],['n7','n2']].map(e=>{let a=nodes.find(n=>n[0]==e[0]),b=nodes.find(n=>n[0]==e[1]);return `<line x1="${a[1]+120}" y1="${a[2]}" x2="${b[1]-20}" y2="${b[2]}" stroke="#10b981" stroke-width="2" marker-end="url(#arr)"/>`}).join('')}<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#10b981"/></marker></defs>${nodes.map(n=>`<g class="node cursor-pointer" data-title="${n[3]}" data-type="${n[4]}"><rect x="${n[1]}" y="${n[2]-24}" width="190" height="48" rx="8" fill="#0f172a" stroke="#334155"/><text x="${n[1]+8}" y="${n[2]-2}" fill="#e2e8f0" font-size="11">${n[3]}</text></g>`).join('')}</svg><div id="nodeDrawer" class="absolute top-2 right-2 w-72 border border-slate-700 rounded bg-base-900 p-3 text-xs hidden"></div><div class="border border-slate-700 rounded p-3 text-xs"><b>KPI Spec</b><div>Grain: policy/premium transaction/agent/period</div><div>Primary Source: CORE_PROVISION_TRANSACTION</div><div>Target Fact: FKT_VERTRIEBSPROVISIONSEREIGNIS</div></div></div>`;
+}
+function canvasPhase4(){const rows=[['Netto Provision (CHF)','CORE→DM','FKT_VERTRIEBSPROVISIONSEREIGNIS','Gold','gold.sales_commission_event','Merge idempotent'],['FX Conversion','CORE','CORE_FX_RATE','Silver','silver.fx_rates','Standardize fallback'],['Agent Dim','DM','DIM_VERMITTLER','Gold','gold.dim_agent','SCD2 policy'],['Policy Dim','DM','DIM_POLICE','Gold','gold.dim_policy','SCD validity checks'],['DQ: Completeness','CTL','CTL_DQ_RESULT','Silver','silver.quality_results','Alerting threshold'],['Reconciliation','CTL','CTL_RECON_RESULT','Silver','silver.recon_results','Tolerance per KPI'],['Orchestration','SAS','run_dm_sales_provisioning.sas','Platform','airflow_dag_sales_prov','DAG templates'],['Bridge Split','DM','BR_POLICE_VERMITTLER_AUFTEILUNG','Gold','gold.bridge_policy_agent_split','Incremental load']];
+return `<div class="h-full p-3 grid grid-cols-5 gap-3"><div class="col-span-3 overflow-auto"><table class="w-full text-xs" id="mapTbl"><thead><tr>${['KPI/Asset','IST Layer','IST Artifact','Target Layer','Target Object','Refactoring Hint'].map(h=>`<th class="text-left p-1 text-slate-400">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr data-layer="${r[3]}" class="border-t border-slate-800 hover:bg-slate-800/40 cursor-pointer">${r.map(c=>`<td class="p-1">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="col-span-2 space-y-3">${['Bronze','Silver','Gold'].map(l=>`<div id="layer-${l}" class="p-4 rounded border border-slate-700"><div class="font-semibold">${l}</div></div>${l!=='Gold'?'<div class="text-center">↑</div>':''}`).join('')}</div></div>`}
+function canvasPhase5(){return `<div class="h-full p-3 overflow-auto"><div class="flex gap-2 mb-3"><select class="px-2 py-1 rounded bg-base-900 border border-slate-700"><option>Netto Provision</option></select><input type="date" class="px-2 py-1 rounded bg-base-900 border border-slate-700"><input value="±1.00" class="w-20 px-2 py-1 rounded bg-base-900 border border-slate-700"></div><div class="grid md:grid-cols-3 gap-2 mb-3 text-sm"><div class="border border-slate-700 rounded p-2"><b>ALT (DAWIS)</b><div>Sum 12’345’678.90</div><div>Rows 1’234’567</div></div><div class="border border-slate-700 rounded p-2"><b>NEU (Prototype)</b><div>Sum 12’345’120.10</div><div>Rows 1’234’550</div></div><div class="border border-red-500/60 rounded p-2"><b>Variance</b><div>Δ Sum -558.80</div><div>Δ Rows -17</div><span class="text-red-300 text-xs">FAIL (over tolerance)</span></div></div><div class="border border-slate-700 rounded p-2 mb-3 text-xs"><b>Golden Dataset Samples</b><table class="w-full mt-1"><tr><th>policy</th><th>agent</th><th>event_date</th><th>amount_chf</th><th>rule_flags</th></tr><tr><td>P-100</td><td>A-9</td><td>2026-02-01</td><td>55.20</td><td>fx_fallback</td></tr><tr><td>P-101</td><td>A-2</td><td>2026-02-02</td><td>40.10</td><td>-</td></tr><tr><td>P-102</td><td>A-3</td><td>2026-02-03</td><td>12.00</td><td>-</td></tr><tr><td>P-103</td><td>A-9</td><td>2026-02-03</td><td>87.40</td><td>late_rate</td></tr><tr><td>P-104</td><td>A-1</td><td>2026-02-04</td><td>20.00</td><td>-</td></tr></table></div><div class="border border-slate-700 rounded p-2 text-xs"><b>Decision Log</b><ol class="list-decimal ml-4"><li>Variance traced to missing FX rate (fallback)</li><li>SME decision: accept fallback rule</li><li>Update mapping spec + retest</li></ol></div></div>`}
+function canvasPhase6(){const p=[['Idempotent Fact Merge','Insert-only→Drift','Merge/Upsert→Corrected events propagate','M'],['Proper SCD2 Interval Governance','Overlaps/gaps','Validated intervals + constraints','H'],['Bridge Incremental Load (avoid full refresh)','Full reload every run','Changed keys only','M'],['Operational Observability (step duration + alerts)','Opaque long-running jobs','Step KPIs + alerting','M']];return `<div class="h-full p-3 grid md:grid-cols-2 gap-3">${p.map(x=>`<div class="rounded border border-slate-700 p-3"><div class="flex justify-between"><b>${x[0]}</b><span class="text-xs px-2 py-0.5 rounded border border-slate-600">Complexity: ${x[3]}</span></div><div class="grid grid-cols-2 gap-2 mt-2 text-xs"><div class="border border-slate-700 rounded p-2 bg-slate-800/40"><b>Before</b><div>${x[1]}</div></div><div class="border border-emerald-500/50 rounded p-2"><b>After</b><div>${x[2]}</div></div></div><div class="text-xs mt-2">Expected impact: bessere Datenqualität & stabilerer Betrieb.</div></div>`).join('')}</div>`}
+function canvasPhase7(){return `<div class="h-full p-3 overflow-auto"><div class="mb-2 text-sm border border-slate-700 rounded p-2">Progress Summary: <b>Tests passed: 42 / 45</b></div><div class="grid grid-cols-4 gap-3"><div class="col-span-3"><table class="w-full text-xs"><tr><th>Test</th><th>KPI</th><th>Tolerance</th><th>Variance</th><th>Status</th></tr>${[['T01','Netto Provision','±1.00','0.22','PASS'],['T02','Payout','±1.00','1.70','FAIL'],['T03','Adjustment','±1.00','0.11','PASS'],['T04','Netto Provision','±1.00','0.19','PASS']].map(r=>`<tr class="border-t border-slate-800">${r.map((c,i)=>`<td class="p-1">${i===4?`<span class="px-2 py-0.5 rounded ${c==='PASS'?'bg-emerald-500/20':'bg-red-500/20'}">${c}</span>`:c}</td>`).join('')}</tr>`).join('')}</table></div><div class="border border-slate-700 rounded p-2 text-xs"><b>Run Evidence</b><div>Run ID RUN-2026-02-19-001</div><div>Cutoff 2026-02-18 23:59</div><div>Dataset Version golden-v3</div><div>Commit abc1234</div></div></div><div class="grid md:grid-cols-3 gap-2 mt-3">${['Netto Provision variance','Payout variance','Adjustment variance'].map((t,i)=>`<div class="border border-slate-700 rounded p-2 text-xs"><div>${t}</div><svg viewBox="0 0 140 40" class="w-full h-10"><polyline fill="none" stroke="#10b981" points="0,20 20,19 40,21 60,20 ${i===1?'80,7':'80,20'} 100,20 120,21 140,20"/></svg></div>`).join('')}</div></div>`}
+function canvasTransition(){return `<div class="h-full p-5"><div class="grid md:grid-cols-3 gap-3">${['0-30 Tage: Stabilisierung PoC','31-60 Tage: Industrialization','61-90 Tage: Handover + Scaling'].map(x=>`<div class="border border-slate-700 rounded p-4"><b>${x}</b><ul class="list-disc ml-4 text-sm mt-2"><li>Owner klar</li><li>KPIs tracken</li><li>Governance Checkpoints</li></ul></div>`).join('')}</div></div>`;}
+
+function renderCanvas(route){
+ const m={ '/':overviewCanvas,'phase-0':canvasPhase0,'phase-1':canvasPhase1,'phase-2':canvasPhase2,'phase-3':canvasPhase3,'phase-4':canvasPhase4,'phase-5':canvasPhase5,'phase-6':canvasPhase6,'phase-7':canvasPhase7,'transition':canvasTransition};
+ return (m[route]||overviewCanvas)();
+}
+function renderPage(){
+  const r=(location.hash||'#/').replace('#/','')||'/';
+  const meta=phaseMeta[r];
+  const left=`<section class="col-span-12 lg:col-span-8 rounded-xl border border-slate-700 bg-base-900 aspect-video canvas-grid overflow-hidden relative">${renderCanvas(r)}</section>`;
+  let right='';
+  if(r!=='/'){ right=`<aside class="col-span-12 lg:col-span-4 space-y-3">${renderFacts(meta.facts)}${renderTalk(meta.talk)}${r==='phase-2'?deepDive('Deep Dive: Sichtbare vs. fehlende Lineage','<ul class="list-disc ml-4"><li>CORE→DM Lineage sichtbar</li><li>STG/WRK Loader im Repo nicht sichtbar</li></ul>'):''}${r==='phase-3'?deepDive('Deep Dive: CORE ER Model',`<div class='mermaid'>${MM.coreEr}</div>`):''}${r==='phase-5'?deepDive('Deep Dive: Control Quality Flow',`<div class='mermaid'>${MM.controlQuality}</div><table class='w-full text-xs mt-2'><tr><th>Metric</th><th>Status</th></tr><tr><td>DQ Completeness</td><td>PASS</td></tr><tr><td>Reconciliation Sum</td><td>FAIL</td></tr><tr><td>Reconciliation Rows</td><td>FAIL</td></tr></table>`):''}</aside>`; }
+  el('content').innerHTML = `<h1 class="text-xl font-semibold mb-4">${meta?meta.title:'Overview'}</h1><div class="grid grid-cols-12 gap-4">${left}${right}</div>`;
+  renderNav();
+  wireInteractions(r);
+  mermaid.initialize({startOnLoad:false, theme: document.documentElement.classList.contains('dark')?'dark':'default'});
+  mermaid.run({querySelector:'.mermaid'});
+}
+function wireInteractions(route){
+  el('menuBtn').onclick=()=>el('drawer').classList.toggle('-translate-x-full');
+  if(el('exportCsv')) el('exportCsv').onclick=()=>{ const rows=[...document.querySelectorAll('#inventoryTbl tr')].map(tr=>[...tr.children].map(td=>`"${td.innerText}"`).join(',')); const blob=new Blob([rows.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory.csv'; a.click();};
+  document.querySelectorAll('.tabBtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabPane').forEach(p=>p.classList.add('hidden'));el('tab-'+(b.dataset.tab==='layer'?'layer':'orch')).classList.remove('hidden'); mermaid.run({querySelector:'.mermaid'});});
+  document.querySelectorAll('.node').forEach(n=>n.onclick=()=>{ const d=el('nodeDrawer'); d.classList.remove('hidden'); d.innerHTML=`<div class='font-semibold'>${n.dataset.title}</div><div class='text-emerald-400 mb-2'>${n.dataset.type}</div><ul class='list-disc ml-4'><li>Extracted notes: Rule-/Mapping-Relevanz erkannt.</li><li>Source reference: SAS/CORE Artefakte verknüpft.</li></ul>`; });
+  document.querySelectorAll('#mapTbl tr[data-layer]').forEach(tr=>tr.onclick=()=>{['Bronze','Silver','Gold'].forEach(l=>el('layer-'+l)?.classList.remove('border-emerald-400','shadow-[0_0_0_1px_rgba(16,185,129,0.5)]')); const layer=tr.dataset.layer; if(el('layer-'+layer)){el('layer-'+layer).classList.add('border-emerald-400','shadow-[0_0_0_1px_rgba(16,185,129,0.5)]');}})
+}
+el('themeToggle').onclick=()=>{document.documentElement.classList.toggle('dark'); renderPage();};
+el('printToggle').onclick=()=>document.body.classList.toggle('print-view');
+window.addEventListener('hashchange', renderPage);
+renderPage();
+</script>
+</body>
 </html>
