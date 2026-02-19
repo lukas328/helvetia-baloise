@@ -1,5 +1,5 @@
 /* Orchestrator: DWH_CORE -> DM_VERSICHERUNG sales provisioning */
-%let g_sas_home=/home/dirk/workspace/helvetia/sas;
+%let g_sas_home=/home/lukas/workspace/helvetia/sas;
 
 %include "&g_sas_home/config/00_options.sas";
 %include "&g_sas_home/config/20_runtime_parameters.sas";
