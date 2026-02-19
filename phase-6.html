@@ -826,10 +826,10 @@ function renderDeepDive(route){
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', stretchCanvas = false }){
   return `
-    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden ${stretchCanvas ? 'min-h-[calc(100vh-180px)]' : ''}">
+      <div class="${stretchCanvas ? 'h-full min-h-[calc(100vh-180px)]' : 'aspect-video'} canvas-grid relative">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -1466,7 +1466,8 @@ function canvasPhase6(){
     subtitle: 'Klar priorisiert, visuell ruhig, direkt umsetzbar für Delivery-Planung.',
     legendBadges: ['Backlog', 'Gates', 'Roadmap'],
     bodyHtml: body,
-    footerHtml: 'Phase 6 • Fokus auf Wirkung, Lesbarkeit und Umsetzung'
+    footerHtml: 'Phase 6 • Fokus auf Wirkung, Lesbarkeit und Umsetzung',
+    stretchCanvas: true
   });
 
   function card(item){
