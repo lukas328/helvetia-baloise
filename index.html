@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>mesoneer | AI Speedboat Demo</title>
+
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -12,49 +14,175 @@
         extend: {
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
           colors: {
-            base: { 950: '#050708', 900: '#0b1114', 800: '#121a1f' }
+            base: { 950: '#050708', 900: '#0b1114', 850:'#0e151a', 800: '#121a1f' },
+            ink:  { 950:'#0b1220' }
+          },
+          boxShadow: {
+            soft: '0 10px 30px rgba(0,0,0,.25)',
+            glow: '0 0 0 1px rgba(16,185,129,.35), 0 10px 25px rgba(16,185,129,.08)',
           }
         }
       }
     };
   </script>
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Mermaid -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
   <style>
-    .canvas-grid {background-image: linear-gradient(rgba(148,163,184,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.08) 1px, transparent 1px); background-size: 24px 24px;}
-    .print-view {background:#f8fafc!important;color:#0f172a!important}
-    .print-view .bg-base-900,.print-view .bg-base-800,.print-view .bg-base-950 {background:#fff!important}
-    .print-view .border-slate-700,.print-view .border-slate-800 {border-color:#0f172a33!important}
-    .print-view .text-slate-100,.print-view .text-slate-200,.print-view .text-slate-300,.print-view .text-slate-400 {color:#0f172a!important}
-    .print-view .canvas-grid {background-image: linear-gradient(rgba(15,23,42,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,.06) 1px, transparent 1px);}
+    /* Canvas subtle grid */
+    .canvas-grid {
+      background-image:
+        linear-gradient(rgba(148,163,184,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148,163,184,.08) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    /* Better mermaid scaling */
+    .mermaid { display:block; }
+    .mermaid svg { max-width: 100% !important; height: auto !important; }
+
+    /* Smooth scrollbars */
+    * { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.25) transparent; }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-thumb { background: rgba(148,163,184,.25); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+    *::-webkit-scrollbar-track { background: transparent; }
+
+    /* Print View */
+    .print-view { background:#f8fafc!important; color:#0f172a!important }
+    .print-view .bg-base-900,
+    .print-view .bg-base-850,
+    .print-view .bg-base-800,
+    .print-view .bg-base-950 { background:#fff!important }
+    .print-view .border-slate-700,
+    .print-view .border-slate-800 { border-color:#0f172a33!important }
+    .print-view .text-slate-100,
+    .print-view .text-slate-200,
+    .print-view .text-slate-300,
+    .print-view .text-slate-400 { color:#0f172a!important }
+    .print-view .canvas-grid {
+      background-image:
+        linear-gradient(rgba(15,23,42,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15,23,42,.06) 1px, transparent 1px);
+    }
+
+    /* Backdrop overlay for mobile drawer */
+    .backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      display: none;
+      z-index: 45;
+    }
+    .backdrop.show { display:block; }
+
+    /* Little “noise” overlay */
+    .noise:before{
+      content:'';
+      position:fixed; inset:0;
+      pointer-events:none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+      opacity: .12;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .transition, .duration-200, .duration-300 { transition: none !important; }
+    }
   </style>
 </head>
-<body class="bg-base-950 text-slate-100 font-sans transition-colors duration-200">
+
+<body class="noise bg-base-950 text-slate-100 font-sans transition-colors duration-200">
+<div id="backdrop" class="backdrop"></div>
+
 <div id="app" class="min-h-screen">
-  <header class="sticky top-0 z-40 border-b border-slate-800 bg-base-950/90 backdrop-blur">
-    <div class="mx-auto max-w-[1500px] px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <button id="menuBtn" class="md:hidden p-2 rounded border border-slate-700">☰</button>
-        <div class="font-semibold tracking-wide">mesoneer <span class="text-emerald-400">|</span> AI Speedboat Demo</div>
+  <!-- Topbar -->
+  <header class="sticky top-0 z-40 border-b border-slate-800 bg-base-950/75 backdrop-blur">
+    <div class="mx-auto max-w-[1550px] px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3 min-w-0">
+        <button id="menuBtn" class="md:hidden p-2 rounded-lg border border-slate-700 hover:border-emerald-400 transition">
+          <span class="sr-only">Menu</span>
+          ☰
+        </button>
+
+        <div class="min-w-0">
+          <div class="font-semibold tracking-wide truncate">
+            mesoneer <span class="text-emerald-400">|</span> AI Speedboat Demo
+          </div>
+          <div id="topSub" class="text-xs text-slate-400 truncate">Vorgehen: von IST-Blackbox zu Target-Blueprint – demo-ready Artefakte pro Phase</div>
+        </div>
       </div>
+
       <div class="flex items-center gap-2 text-sm">
-        <button id="themeToggle" class="px-3 py-1.5 rounded border border-slate-700 hover:border-emerald-400 transition">Dark/Light</button>
-        <button id="printToggle" class="px-3 py-1.5 rounded border border-slate-700 hover:border-emerald-400 transition">Print View</button>
+        <button id="copyLink" class="hidden sm:inline-flex px-3 py-1.5 rounded-lg border border-slate-700 hover:border-emerald-400 transition">
+          Link kopieren
+        </button>
+        <button id="themeToggle" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:border-emerald-400 transition">
+          Dark/Light
+        </button>
+        <button id="printToggle" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:border-emerald-400 transition">
+          Print View
+        </button>
       </div>
     </div>
   </header>
-  <div class="mx-auto max-w-[1500px] px-4 py-4 md:py-6 flex gap-4">
-    <aside id="drawer" class="fixed md:static inset-y-0 left-0 w-72 md:w-64 bg-base-900 border-r border-slate-800 p-4 transform -translate-x-full md:translate-x-0 transition duration-200 z-50 overflow-y-auto"></aside>
-    <div class="flex-1">
+
+  <!-- Body -->
+  <div class="mx-auto max-w-[1550px] px-4 py-4 md:py-6 flex gap-4">
+    <!-- Sidebar / Drawer -->
+    <aside id="drawer"
+      class="fixed md:static inset-y-0 left-0 w-80 md:w-72 bg-base-900 border-r border-slate-800 p-4
+             transform -translate-x-full md:translate-x-0 transition duration-200 z-50 overflow-y-auto">
+
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="text-xs text-slate-400">Navigation</div>
+          <div class="font-semibold">AI Speedboat</div>
+        </div>
+        <button id="closeDrawer" class="md:hidden p-2 rounded-lg border border-slate-700 hover:border-emerald-400 transition">✕</button>
+      </div>
+
+      <div class="rounded-xl border border-slate-800 bg-base-850 p-3 mb-4">
+        <div class="text-xs text-slate-400">Quick hint</div>
+        <div class="text-sm">Klick durch die Phasen – jede Seite hat links ein “Demo-Canvas” wie ein Slide-Screenshot.</div>
+      </div>
+
+      <div id="nav" class="space-y-2"></div>
+
+      <div class="mt-5 rounded-xl border border-slate-800 bg-base-850 p-3">
+        <div class="text-xs text-slate-400 mb-2">Legend</div>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10">Active</span>
+          <span class="px-2 py-1 rounded-full border border-slate-700 bg-slate-800/40">Demo data</span>
+          <span class="px-2 py-1 rounded-full border border-slate-700 bg-slate-800/40">Evidence</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="flex-1 min-w-0">
       <main id="content"></main>
     </div>
   </div>
 </div>
+
+<!-- Toast -->
+<div id="toast"
+  class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] hidden
+         px-4 py-2 rounded-xl border border-slate-700 bg-base-900 shadow-soft text-sm">
+</div>
+
 <script>
+/* ================================
+   Mermaid sources (embedded)
+   ================================ */
 const MM = {
-architectureLayers: `flowchart LR
+  architectureLayers: `flowchart LR
   subgraph SRC[Operational Source Systems]
     S1[Policy Admin]
     S2[Commission Engine]
@@ -108,7 +236,7 @@ architectureLayers: `flowchart LR
   ETL[SAS Batch Orchestrator]
   ETL --> DM
   ETL --> CTL`,
-orchestrationSequence: `sequenceDiagram
+  orchestrationSequence: `sequenceDiagram
   autonumber
   participant SCH as Scheduler
   participant SAS as run_dm_sales_provisioning.sas
@@ -141,7 +269,7 @@ orchestrationSequence: `sequenceDiagram
     SAS->>CTL: Log RUN_END (FAILED)
     SAS-->>SCH: Abort/CANCEL
   end`,
-coreEr: `erDiagram
+  coreEr: `erDiagram
   CORE_PARTY {
     bigint party_key PK
     varchar source_party_id
@@ -150,7 +278,6 @@ coreEr: `erDiagram
     date valid_to
     char is_current
   }
-
   CORE_PARTY_ROLE {
     bigint party_role_key PK
     bigint party_key FK
@@ -159,7 +286,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_PRODUCT {
     bigint product_key PK
     varchar source_product_id
@@ -167,7 +293,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_POLICY {
     bigint policy_key PK
     varchar source_policy_id
@@ -177,7 +302,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_POLICY_AGENT_ASSIGNMENT {
     bigint policy_agent_assignment_key PK
     bigint policy_key FK
@@ -189,7 +313,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_ORG_UNIT {
     bigint org_unit_key PK
     varchar source_org_unit_id
@@ -197,7 +320,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_CHANNEL {
     bigint channel_key PK
     varchar source_channel_id
@@ -205,7 +327,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_COMMISSION_PLAN {
     bigint commission_plan_key PK
     varchar source_plan_id
@@ -213,7 +334,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_COMMISSION_RULE {
     bigint commission_rule_key PK
     varchar source_rule_id
@@ -222,17 +342,14 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_DATE {
     int date_key PK
     date calendar_date
   }
-
   CORE_CURRENCY {
     char currency_key PK
     varchar currency_name
   }
-
   CORE_FX_RATE {
     bigint fx_rate_key PK
     int rate_date_key FK
@@ -240,7 +357,6 @@ coreEr: `erDiagram
     char to_currency_key FK
     decimal fx_rate
   }
-
   CORE_PREMIUM_TRANSACTION {
     bigint premium_txn_key PK
     varchar source_premium_txn_id
@@ -250,7 +366,6 @@ coreEr: `erDiagram
     decimal gross_amount
     decimal net_amount
   }
-
   CORE_PROVISION_TRANSACTION {
     bigint provision_txn_key PK
     varchar source_provision_event_id
@@ -264,7 +379,6 @@ coreEr: `erDiagram
     int event_effective_date_key FK
     char currency_key FK
   }
-
   CORE_PAYOUT_TRANSACTION {
     bigint payout_txn_key PK
     varchar source_payout_id
@@ -274,7 +388,6 @@ coreEr: `erDiagram
     int payout_date_key FK
     char currency_key FK
   }
-
   CORE_REASON {
     bigint reason_key PK
     varchar source_reason_id
@@ -282,7 +395,6 @@ coreEr: `erDiagram
     date valid_from
     date valid_to
   }
-
   CORE_ADJUSTMENT_TRANSACTION {
     bigint adjustment_txn_key PK
     varchar source_adjustment_id
@@ -335,104 +447,1370 @@ coreEr: `erDiagram
   CORE_DATE ||--o{ CORE_FX_RATE : rate_date
   CORE_CURRENCY ||--o{ CORE_FX_RATE : from_ccy
   CORE_CURRENCY ||--o{ CORE_FX_RATE : to_ccy`,
-controlQuality: `flowchart TD
+  controlQuality: `flowchart TD
   A[Batch Trigger] --> B[CTL_BATCH_RUN insert RUNNING]
   B --> C[Mapping Steps 01..13]
   C --> D[CTL_BATCH_STEP logs]
-
   C --> E[DQ Assertions]
   E --> F[CTL_DQ_RESULT inserts]
-
   F --> G[Reconciliation Metrics]
   G --> H[CTL_RECON_RESULT inserts]
-
   H --> I{g_has_error > 0?}
   I -- No --> J[Set run status SUCCEEDED]
   I -- Yes --> K[Set run status FAILED]
-
   J --> L[Update CTL_BATCH_RUN end_ts + status]
   K --> L
-
   L --> M{Status SUCCEEDED?}
   M -- Yes --> N[Upsert CTL_WATERMARK for CORE transaction entities]
   M -- No --> O[Abort batch]
-
   N --> P[Log RUN_END in CTL_BATCH_STEP]
   O --> P
-
   Q[CTL_ALERT table exists] -. currently not populated .-> P`
 };
 
+/* ================================
+   Content model
+   ================================ */
 const NAV = [
-['/', 'Overview', 'OV'], ['phase-0','Phase 0','0'],['phase-1','Phase 1','1'],['phase-2','Phase 2','2'],['phase-3','Phase 3','3'],['phase-4','Phase 4','4'],['phase-5','Phase 5','5'],['phase-6','Phase 6','6'],['phase-7','Phase 7','7'],['transition','Transition','T']
+  { route:'/', label:'Overview', badge:'OV', hint:'Timeline & Jump links' },
+  { route:'phase-0', label:'Phase 0', badge:'0', hint:'AI Setup' },
+  { route:'phase-1', label:'Phase 1', badge:'1', hint:'Data Gathering & Scope' },
+  { route:'phase-2', label:'Phase 2', badge:'2', hint:'Architecture Reconstruction' },
+  { route:'phase-3', label:'Phase 3', badge:'3', hint:'KPI & Logic Extraction' },
+  { route:'phase-4', label:'Phase 4', badge:'4', hint:'IST → Target Mapping' },
+  { route:'phase-5', label:'Phase 5', badge:'5', hint:'Baseline Validation' },
+  { route:'phase-6', label:'Phase 6', badge:'6', hint:'Refactoring Patterns' },
+  { route:'phase-7', label:'Phase 7', badge:'7', hint:'Regression & Evidence' },
+  { route:'transition', label:'Transition', badge:'T', hint:'Plan & Collaboration' },
 ];
+
 const phaseMeta = {
-'phase-0':{title:'Phase 0: AI-Setup',facts:{Input:'Azure Best Practices / Security Vorgaben, vorhandene Komponenten',Aktivitäten:'AI Hub aufsetzen, Secrets/Access, Logging/Redaction, Agent Runtime',Deliverables:'AI Hub Referenzarchitektur, Security Checklist, PoC Readiness',Ziel:'Schaffung des Fundaments – AI-PoC Umgebung, Agents/Workflows, Security & Governance.',Mehrwert:['Sicherer Rahmen','Wiederverwendbarer AI Hub','Schneller Start']},talk:['Zentraler AI Hub als einheitlicher Einstieg.','Security/Logging sind vom ersten Tag integriert.','Agents können ab Phase 1 direkt produktiv im PoC laufen.']},
-'phase-1':{title:'Phase 1: Data Gathering & Scope',facts:{Input:'Scope/Prioritäten, KPI Referenzen, SAS EG/DI Artefakte, SQL/DB2, Cobol, Shell, Python, Scheduler/Cron, Logs, Reports, Dokus',Aktivitäten:'Sammlung/Extraktion, Artefakt-Inventar, Klassifikation (Layer/Domain), Abhängigkeiten, PoC Scope, Erfolgskriterien',Deliverables:'Artefakt-Inventar + Klassifikation, Domänen/Layers, PoC Scope Doc',Ziel:'IST-Transparenz + klarer PoC Scope',Mehrwert:['Schneller Überblick über kritische Assets','Klare Priorisierung für Pilot-Use-Cases','Messbare Erfolgskriterien für Stakeholder']},talk:['Inventarisierung schafft belastbare Grundlage.','Klassifikation verbindet Technik und Business-Kontext.','Scope bleibt schlank und umsetzbar.']},
-'phase-2':{title:'Phase 2: Architecture Reconstruction (IST)',facts:{Input:'Phase-1 Inventar, Pipeline-Jobs, DDLs, Mermaid-basierte Rekonstruktion',Aktivitäten:'Layer-Modell rekonstruieren, Orchestrierung modellieren, Gaps markieren',Deliverables:'IST-Layer View, Sequenzfluss, Gap-Dokumentation',Ziel:'Sichtbarkeit auf technische Wirkzusammenhänge',Mehrwert:['Schneller Konsens über IST','Kritische Lücken früh sichtbar','Basis für gezielte Refactoring-Schritte']},talk:['Layer-View zeigt Systemgrenzen klar.','Sequenzmodell macht Kontrollpunkte explizit.','Visibility Gaps werden konkret benannt.']},
-'phase-3':{title:'Phase 3: Business Logic & KPI Extraction',facts:{Input:'SAS Orchestrator + Mapping Scripts + Core Tabellen',Aktivitäten:'Call-Chain Analyse, Rule Extraktion, KPI Spezifikation',Deliverables:'Call-Chain Graph, KPI Spec, Rule Notes',Ziel:'Business-Logik nachvollziehbar und testbar machen',Mehrwert:['Regeln werden transparent','KPI-Herkunft ist belegbar','SME-Review wird beschleunigt']},talk:['KPI wird bis zur Quelle heruntergebrochen.','Rules erhalten klare fachliche Notizen.','Source-Referenzen unterstützen Auditierbarkeit.']},
-'phase-4':{title:'Phase 4: Mapping IST → Target (Medallion)',facts:{Input:'IST Modelle + KPI/Assets + Zielarchitektur',Aktivitäten:'IST zu Bronze/Silver/Gold mappen, Refactoring-Hinweise ableiten',Deliverables:'Mapping Matrix, Target Objects, Pattern Hints',Ziel:'Migrationspfad mit klaren Zielobjekten',Mehrwert:['Technischer und fachlicher Brückenschlag','Konkrete Landing-Zonen pro Asset','Umsetzung wird planbar']},talk:['Matrix macht Transformation pragmatisch.','Medallion-Layer zeigen Zielzustand kompakt.','Row-to-Layer Highlighting unterstützt Diskussionen.']},
-'phase-5':{title:'Phase 5: Baseline Validation',facts:{Input:'Golden Dataset, Alt- und Prototyp-Läufe, Toleranzen',Aktivitäten:'Vergleich Alt/Neu, Varianz-Analyse, Decision Logging',Deliverables:'Comparator Output, Decision Log, DQ/Reconciliation Sicht',Ziel:'Vertrauen in Ergebnisqualität herstellen',Mehrwert:['Abweichungen früh erkannt','SME-Entscheidungen dokumentiert','Gezielte Retests']},talk:['Vergleich macht Abweichungen sofort sichtbar.','Decision Log hält fachliche Entscheidungen fest.','Toleranzen steuern objektive Freigabe.']},
-'phase-6':{title:'Phase 6: Refactoring & Improvement',facts:{Input:'Validation Findings, Performance- und Qualitätsprobleme',Aktivitäten:'Pattern-Auswahl, Before/After Design, Priorisierung',Deliverables:'Pattern Board, erwartete Effekte, Umsetzungsreihenfolge',Ziel:'Qualität + Betriebssicherheit steigern',Mehrwert:['Weniger Daten-Drift','Bessere Nachvollziehbarkeit','Stabilerer Betrieb']},talk:['Patterns beschleunigen technische Entscheidungen.','Before/After macht Nutzen klar quantifizierbar.','Komplexität wird offen kommuniziert.']},
-'phase-7':{title:'Phase 7: Validation (Regression Pack)',facts:{Input:'Regression Testkatalog, Gold-Datenversion, Pipeline Run Evidence',Aktivitäten:'Tests ausführen, Varianzen prüfen, Evidence paketieren',Deliverables:'Regression Tabelle, Evidence Card, Trend-Sparklines',Ziel:'Release-fähige Qualitätsaussage',Mehrwert:['Objektive Go/No-Go Signale','Reproduzierbare Testläufe','Auditierbare Nachweise']},talk:['Regression Pack verdichtet Qualitätslage.','Evidence schafft Reproduzierbarkeit.','Sparklines zeigen Stabilität über Zeit.']},
-'transition':{title:'Transition Plan',facts:{Input:'Ergebnisse Phase 0-7',Aktivitäten:'Roadmap, Team-Rollen, Betriebsmodell',Deliverables:'90-Tage Transition Plan, Governance Set-up, KPI Cockpit',Ziel:'Geordnete Überführung in Delivery',Mehrwert:['Schneller Start im Zielbild','Klare Verantwortungen','Messbarer Fortschritt']},talk:['Vom PoC zur belastbaren Delivery.','Governance und Betrieb früh etablieren.','Quick Wins + mittelfristige Initiativen kombinieren.']}
+  'phase-0': {
+    title: 'Phase 0: AI-Setup',
+    subtitle: 'Fundament für sicheren, reproduzierbaren PoC-Betrieb.',
+    facts: {
+      Ziel: 'Schaffung des Fundaments – AI-PoC Umgebung, Agents/Workflows, Security & Governance.',
+      Mehrwert: ['Sicherer Rahmen', 'Wiederverwendbarer AI Hub', 'Schneller Start'],
+      Input: ['Azure Best Practices / Security Vorgaben', 'Vorhandene Komponenten (optional)'],
+      Aktivitäten: ['AI Hub aufsetzen', 'Secrets/Access', 'Logging/Redaction', 'Agent Runtime vorbereiten'],
+      Deliverables: ['AI Hub Referenzarchitektur', 'Security Checklist', 'PoC Readiness']
+    },
+    talk: [
+      'Zentraler AI Hub als einheitlicher Einstieg.',
+      'Security/Logging sind vom ersten Tag integriert.',
+      'Agents können ab Phase 1 sofort im PoC laufen.'
+    ]
+  },
+  'phase-1': {
+    title: 'Phase 1: Data Gathering & Scope',
+    subtitle: 'Alles inventarisieren, klassifizieren, Scope messbar schneiden.',
+    facts: {
+      Ziel: 'IST-Transparenz + klarer PoC Scope.',
+      Mehrwert: ['Schneller Überblick über kritische Assets', 'Klare Priorisierung für Pilot-Use-Cases', 'Messbare Erfolgskriterien'],
+      Input: ['Scope/Prioritäten', 'KPI Referenzen', 'SAS EG/DI Artefakte', 'SQL/DB2, Cobol, Shell, Python', 'Scheduler/Cron, Logs, Reports, Dokus'],
+      Aktivitäten: ['Sammlung/Extraktion', 'Artefakt-Inventar', 'Klassifikation (Layer/Domain)', 'Abhängigkeiten', 'PoC Scope', 'Erfolgskriterien'],
+      Deliverables: ['Artefakt-Inventar + Klassifikation', 'Domänen/Layers', 'PoC Scope Dokument']
+    },
+    talk: ['Inventarisierung schafft belastbare Grundlage.', 'Klassifikation verbindet Technik und Business.', 'Scope bleibt schlank & umsetzbar.']
+  },
+  'phase-2': {
+    title: 'Phase 2: Architecture Reconstruction (IST)',
+    subtitle: 'Layering + Orchestrierung sichtbar machen, Gaps markieren.',
+    facts: {
+      Ziel: 'Sichtbarkeit auf technische Wirkzusammenhänge.',
+      Mehrwert: ['Schneller Konsens über IST', 'Kritische Lücken früh sichtbar', 'Basis für gezielte Refactoring-Schritte'],
+      Input: ['Inventar aus Phase 1', 'DDL/Pipelines/Jobs', 'Scheduler Infos', 'Metadaten & Dokus'],
+      Aktivitäten: ['Layer-Modell rekonstruieren', 'Orchestrierung modellieren', 'Gaps/Hotspots markieren'],
+      Deliverables: ['IST Layer View', 'Sequenzfluss', 'Gap-Dokumentation']
+    },
+    talk: ['Layer-View zeigt Systemgrenzen klar.', 'Sequenzmodell macht Kontrollpunkte explizit.', 'Visibility Gaps werden konkret benannt.']
+  },
+  'phase-3': {
+    title: 'Phase 3: Business Logic & KPI Extraction',
+    subtitle: 'KPI bis zur Quelle herunterbrechen – Rules testbar machen.',
+    facts: {
+      Ziel: 'Business-Logik nachvollziehbar und testbar machen.',
+      Mehrwert: ['Regeln werden transparent', 'KPI-Herkunft ist belegbar', 'SME-Review wird beschleunigt'],
+      Input: ['SAS Orchestrator', 'Mapping Scripts', 'Core Tabellen & Joins'],
+      Aktivitäten: ['Call-Chain Analyse', 'Rule Extraktion', 'KPI Spezifikation'],
+      Deliverables: ['Call-Chain Graph', 'KPI Spec', 'Rule Notes']
+    },
+    talk: ['KPI wird bis zur Quelle heruntergebrochen.', 'Rules erhalten klare fachliche Notizen.', 'Source-Referenzen unterstützen Auditierbarkeit.']
+  },
+  'phase-4': {
+    title: 'Phase 4: Mapping IST → Target (Medallion)',
+    subtitle: 'IST Assets sauber auf Bronze/Silver/Gold Zielobjekte mappen.',
+    facts: {
+      Ziel: 'Migrationspfad mit klaren Zielobjekten.',
+      Mehrwert: ['Tech & Business Brückenschlag', 'Konkrete Landing-Zonen pro Asset', 'Umsetzung wird planbar'],
+      Input: ['IST Modelle', 'KPI/Assets', 'Zielarchitektur & Standards'],
+      Aktivitäten: ['IST → Medallion Mapping', 'Target Objects definieren', 'Refactoring Hints ableiten'],
+      Deliverables: ['Mapping Matrix', 'Target Objects', 'Pattern Hints']
+    },
+    talk: ['Matrix macht Transformation pragmatisch.', 'Medallion-Layer zeigen Zielzustand kompakt.', 'Highlighting unterstützt Diskussionen.']
+  },
+  'phase-5': {
+    title: 'Phase 5: Baseline Validation',
+    subtitle: 'Alt/Neu Vergleich + Decision Log → Vertrauen herstellen.',
+    facts: {
+      Ziel: 'Vertrauen in Ergebnisqualität herstellen.',
+      Mehrwert: ['Abweichungen früh erkannt', 'SME-Entscheidungen dokumentiert', 'Gezielte Retests'],
+      Input: ['Golden Dataset', 'Alt- und Prototyp-Läufe', 'Toleranzen'],
+      Aktivitäten: ['Vergleich Alt/Neu', 'Varianz-Analyse', 'Decision Logging'],
+      Deliverables: ['Comparator Output', 'Decision Log', 'DQ/Reconciliation Sicht']
+    },
+    talk: ['Vergleich macht Abweichungen sofort sichtbar.', 'Decision Log hält fachliche Entscheidungen fest.', 'Toleranzen steuern objektive Freigabe.']
+  },
+  'phase-6': {
+    title: 'Phase 6: Refactoring & Improvement',
+    subtitle: 'Patterns statt 1:1 – Qualität & Skalierbarkeit erhöhen.',
+    facts: {
+      Ziel: 'Qualität + Betriebssicherheit steigern.',
+      Mehrwert: ['Weniger Drift', 'Bessere Nachvollziehbarkeit', 'Stabilerer Betrieb'],
+      Input: ['Validation Findings', 'Performance- & Qualitätsprobleme'],
+      Aktivitäten: ['Pattern-Auswahl', 'Before/After Design', 'Priorisierung'],
+      Deliverables: ['Pattern Board', 'Expected Effects', 'Umsetzungsreihenfolge']
+    },
+    talk: ['Patterns beschleunigen technische Entscheidungen.', 'Before/After macht Nutzen greifbar.', 'Komplexität wird transparent kommuniziert.']
+  },
+  'phase-7': {
+    title: 'Phase 7: Validation (Regression Pack)',
+    subtitle: 'Objektive Go/No-Go Signale + Evidence Paket.',
+    facts: {
+      Ziel: 'Release-fähige Qualitätsaussage.',
+      Mehrwert: ['Objektive Go/No-Go Signale', 'Reproduzierbare Testläufe', 'Auditierbare Nachweise'],
+      Input: ['Regression Testkatalog', 'Golden Datenversion', 'Run Evidence'],
+      Aktivitäten: ['Tests ausführen', 'Varianzen prüfen', 'Evidence paketieren'],
+      Deliverables: ['Regression Tabelle', 'Evidence Card', 'Trend-Sparklines']
+    },
+    talk: ['Regression Pack verdichtet Qualitätslage.', 'Evidence schafft Reproduzierbarkeit.', 'Sparklines zeigen Stabilität über Zeit.']
+  },
+  'transition': {
+    title: 'Transition Plan & Collaboration',
+    subtitle: '10–12 Wochen PoC Roadmap + Rollenmodell.',
+    facts: {
+      Ziel: 'Geordnete Überführung in Delivery.',
+      Mehrwert: ['Schneller Start im Zielbild', 'Klare Verantwortungen', 'Messbarer Fortschritt'],
+      Input: ['Ergebnisse Phase 0–7'],
+      Aktivitäten: ['Roadmap & Gates', 'Team Rollen', 'Betriebs-/Governance Modell'],
+      Deliverables: ['Transition Plan', 'RACI', 'Demo/Decision Gates']
+    },
+    talk: ['Vom PoC zur belastbaren Delivery.', 'Governance & Betrieb früh etablieren.', 'Quick wins + Skalierung kombinieren.']
+  },
 };
 
+/* ================================
+   Helpers
+   ================================ */
 const el = (id)=>document.getElementById(id);
+const toast = (msg) => {
+  const t = el('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>t.classList.add('hidden'), 1600);
+};
+
+function getRoute(){
+  const raw = (location.hash || '#/').replace('#/','');
+  return raw === '' ? '/' : raw;
+}
+
+function setTheme(isDark){
+  document.documentElement.classList.toggle('dark', !!isDark);
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  renderPage();
+}
+
+function applyMermaidTheme(){
+  const dark = document.documentElement.classList.contains('dark');
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'loose',
+    theme: 'base',
+    themeVariables: dark ? {
+      background: '#0b1114',
+      primaryColor: '#121a1f',
+      primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#334155',
+      lineColor: '#10b981',
+      secondaryColor: '#0e151a',
+      tertiaryColor: '#0e151a',
+      fontFamily: 'Inter',
+    } : {
+      background: '#ffffff',
+      primaryColor: '#f8fafc',
+      primaryTextColor: '#0f172a',
+      primaryBorderColor: '#94a3b8',
+      lineColor: '#059669',
+      secondaryColor: '#ffffff',
+      tertiaryColor: '#ffffff',
+      fontFamily: 'Inter',
+    }
+  });
+}
+
+/* ================================
+   UI renderers
+   ================================ */
+function navItemHTML(item, active){
+  return `
+    <a href="#/${item.route === '/' ? '' : item.route}"
+      class="group block rounded-xl border px-3 py-2 transition
+             ${active
+               ? 'border-emerald-400 bg-emerald-400/10 shadow-glow'
+               : 'border-slate-800 bg-base-850 hover:border-slate-600 hover:bg-base-800/60'}">
+      <div class="flex items-start gap-3">
+        <span class="mt-0.5 inline-flex w-8 h-8 items-center justify-center text-xs font-semibold rounded-xl
+                     ${active ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40' : 'bg-slate-800/50 text-slate-200 border border-slate-700'}">
+          ${item.badge}
+        </span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <div class="font-semibold text-sm truncate">${item.label}</div>
+            ${active ? `<span class="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Active</span>` : ``}
+          </div>
+          <div class="text-xs text-slate-400 truncate">${item.hint}</div>
+        </div>
+      </div>
+    </a>
+  `;
+}
+
 function renderNav(){
-  el('drawer').innerHTML = `<div class="text-slate-400 text-xs mb-3">Navigation</div>${NAV.map(([r,t,b])=>`<a href="#/${r==='/'?'':r}" class="block px-3 py-2 rounded border mb-2 transition ${location.hash===`#/${r==='/'?'':r}`||(!location.hash&&r==='/')?'border-emerald-400 bg-emerald-400/10':'border-slate-800 hover:border-slate-600'}"><span class="inline-flex w-6 h-6 items-center justify-center text-xs rounded-full bg-slate-800 mr-2">${b}</span>${t}</a>`).join('')}`;
+  const r = getRoute();
+  el('nav').innerHTML = NAV.map(item => navItemHTML(item, item.route === r)).join('');
 }
-function renderFacts(f){ return `<div class="rounded-xl border border-slate-700 bg-base-900 p-4 space-y-2"><h3 class="font-semibold">Phase Facts</h3>${Object.entries(f).map(([k,v])=>`<div><div class="text-xs text-slate-400">${k}</div>${Array.isArray(v)?`<ul class="list-disc ml-4">${v.map(x=>`<li>${x}</li>`).join('')}</ul>`:`<div class="text-sm">${v}</div>`}</div>`).join('')}</div>`; }
-function renderTalk(points){ return `<div class="rounded-xl border border-slate-700 bg-base-900 p-4"><h3 class="font-semibold mb-2">Demo Talking Points</h3><ul class="list-disc ml-4 text-sm space-y-1">${points.map(p=>`<li>${p}</li>`).join('')}</ul></div>`; }
-function deepDive(title,inner){ return `<details class="rounded-xl border border-slate-700 bg-base-900 p-4"><summary class="cursor-pointer font-medium">${title}</summary><div class="mt-3 text-sm">${inner}</div></details>`; }
 
+function sectionBlock(title, items){
+  const content = Array.isArray(items)
+    ? `<ul class="mt-1 space-y-1 text-sm">
+        ${items.map(x => `<li class="flex gap-2">
+            <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400/70 flex-none"></span>
+            <span class="text-slate-200/90">${x}</span>
+          </li>`).join('')}
+       </ul>`
+    : `<div class="mt-1 text-sm text-slate-200/90">${items}</div>`;
+
+  return `
+    <div class="rounded-xl border border-slate-800 bg-base-850 p-4">
+      <div class="text-xs uppercase tracking-wide text-slate-400">${title}</div>
+      ${content}
+    </div>
+  `;
+}
+
+function renderRightPanel(route){
+  const meta = phaseMeta[route];
+  if(!meta) return '';
+  const f = meta.facts;
+
+  return `
+    <aside class="col-span-12 lg:col-span-4 space-y-3 lg:sticky lg:top-24 h-fit">
+      <div class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-xs text-slate-400">Phase</div>
+            <div class="font-semibold">${meta.title}</div>
+            <div class="text-sm text-slate-400 mt-1">${meta.subtitle}</div>
+          </div>
+          <span class="px-2 py-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-xs">Demo</span>
+        </div>
+      </div>
+
+      ${sectionBlock('Ziel', f.Ziel)}
+      ${sectionBlock('Mehrwert', f.Mehrwert)}
+      ${sectionBlock('Input', f.Input)}
+      ${sectionBlock('Aktivitäten', f.Aktivitäten)}
+      ${sectionBlock('Deliverables', f.Deliverables)}
+
+      <div class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
+        <div class="font-semibold mb-2">Demo Talking Points</div>
+        <ol class="space-y-2 text-sm list-decimal ml-5">
+          ${meta.talk.map(x => `<li class="text-slate-200/90">${x}</li>`).join('')}
+        </ol>
+      </div>
+
+      ${renderDeepDive(route)}
+    </aside>
+  `;
+}
+
+function renderDeepDive(route){
+  if(route === 'phase-2'){
+    return `
+      <details class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
+        <summary class="cursor-pointer font-semibold">Deep Dive: Sichtbare vs. fehlende Lineage</summary>
+        <div class="mt-3 text-sm text-slate-200/90 space-y-2">
+          <ul class="list-disc ml-5">
+            <li>CORE→DM Lineage sichtbar</li>
+            <li>STG/WRK Loader im Repo nicht sichtbar</li>
+          </ul>
+        </div>
+      </details>
+    `;
+  }
+  if(route === 'phase-3'){
+    return `
+      <details class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
+        <summary class="cursor-pointer font-semibold">Deep Dive: CORE ER Model</summary>
+        <div class="mt-3">
+          <div class="mermaid">${MM.coreEr}</div>
+        </div>
+      </details>
+    `;
+  }
+  if(route === 'phase-5'){
+    return `
+      <details class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
+        <summary class="cursor-pointer font-semibold">Deep Dive: Control & Quality Flow</summary>
+        <div class="mt-3 space-y-3">
+          <div class="mermaid">${MM.controlQuality}</div>
+          <div class="rounded-xl border border-slate-800 bg-base-850 p-3">
+            <div class="text-xs text-slate-400 mb-2">DQ & Reconciliation Metrics</div>
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-slate-400">
+                  <th class="text-left py-1">Metric</th>
+                  <th class="text-left py-1">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-t border-slate-800"><td class="py-1">DQ Completeness</td><td class="py-1"><span class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40">PASS</span></td></tr>
+                <tr class="border-t border-slate-800"><td class="py-1">Reconciliation Sum</td><td class="py-1"><span class="px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/40">FAIL</span></td></tr>
+                <tr class="border-t border-slate-800"><td class="py-1">Reconciliation Rows</td><td class="py-1"><span class="px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/40">FAIL</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    `;
+  }
+  return '';
+}
+
+/* ================================
+   Canvas shell
+   ================================ */
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+  return `
+    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
+      <div class="aspect-video canvas-grid relative">
+        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
+
+        <div class="h-full flex flex-col">
+          <!-- Canvas header -->
+          <div class="px-4 py-3 border-b border-slate-800 bg-base-950/40 backdrop-blur flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <div class="font-semibold truncate">${title}</div>
+                <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">Demo Canvas</span>
+              </div>
+              ${subtitle ? `<div class="text-xs text-slate-400 mt-0.5 truncate">${subtitle}</div>` : ``}
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+              ${legendBadges.map(b => `<span class="text-[10px] px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">${b}</span>`).join('')}
+              ${controlsHtml}
+              <button data-action="fullscreen" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 hover:border-emerald-400 transition">
+                Fullscreen
+              </button>
+            </div>
+          </div>
+
+          <!-- Canvas body -->
+          <div class="flex-1 min-h-0 overflow-auto p-4">
+            ${bodyHtml}
+          </div>
+
+          <!-- Canvas footer -->
+          <div class="px-4 py-2 border-t border-slate-800 bg-base-950/40 text-xs text-slate-400 flex items-center justify-between">
+            <div>${footerHtml || 'demo-ready • no external calls • reproducible'}</div>
+            <div class="hidden sm:block">hash routing • single file</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+/* ================================
+   Canvases
+   ================================ */
 function overviewCanvas(){
- const steps=[['phase-0','AI Setup','Fundament für sicheren PoC-Betrieb.'],['phase-1','Scope Selection','Artefakte, Prioritäten und Scope definiert.'],['phase-2','Architecture Reconstruction','IST-Struktur und Kontrollfluss sichtbar.'],['phase-3','Business Logic & KPI','KPI-Logik und Rule-Chain extrahiert.'],['phase-4','Mapping','IST auf Medallion-Target gemappt.'],['phase-5','Baseline Validation','Alt/Neu Vergleich mit Decision Log.'],['phase-6','Refactoring','Patterns für Qualität und Skalierung.'],['phase-7','Validation','Regression Pack mit Evidence.'],['transition','Transition Plan','Roadmap zur Delivery.']];
- return `<div class="h-full p-6 overflow-auto"><div class="grid md:grid-cols-9 gap-3">${steps.map((s,i)=>`<a href="#/${s[0]}" class="rounded-lg border border-slate-700 p-3 hover:border-emerald-400 transition"><div class="text-xs text-emerald-400">${i}</div><div class="font-semibold text-sm">${s[1]}</div><div class="text-xs text-slate-400 mt-1">${s[2]}</div></a>`).join('')}</div></div>`;
-}
-function canvasPhase0(){return `<div class="h-full p-4"><div class="grid gap-3 h-full"><div class="grid grid-cols-4 gap-2 rounded border border-slate-700 p-2"><b class="col-span-4 text-emerald-400">Security & Governance</b>${['Entra ID (RBAC)','Key Vault','Policy/Guardrails','Audit Logging'].map(x=>`<div class="border border-slate-700 rounded p-2 text-xs">${x}</div>`).join('')}</div><div class="grid grid-cols-5 gap-2 rounded border border-slate-700 p-2"><b class="col-span-5 text-emerald-400">AI Runtime</b>${['Web UI','Orchestrator/Agent Runner','Azure OpenAI','Prompt Templates','Content Filters'].map(x=>`<div class="border border-slate-700 rounded p-2 text-xs">${x}</div>`).join('')}</div><div class="grid grid-cols-5 gap-2 rounded border border-slate-700 p-2"><b class="col-span-5 text-emerald-400">Data & Knowledge</b>${['Artefakt Store','Metadata DB','Vector Index/Search','Evidence Log Storage',''].map(x=>x?`<div class="border border-slate-700 rounded p-2 text-xs">${x}</div>`:'').join('')}</div></div><div class="text-xs mt-2 flex gap-2 justify-end">${['Demo data only','Audit-ready','Reproducible runs','Private data: OFF'].map(x=>`<span class="px-2 py-1 border border-emerald-500/40 rounded bg-emerald-500/10">${x}</span>`).join('')}</div></div>`;}
-function canvasPhase1(){
- const rows=[['sas/run_dm_sales_provisioning.sas','Orchestrator','CORE→DM','Vertrieb','High','Unassigned','Discovered'],['sas/mapping/11_fact_vertriebsprovisionsereignis.sas','Mapping','DM','Vertrieb','High','Unassigned','Discovered'],['sas/macros/m_fact_upsert.sas','Macro','Shared','Plattform','Medium','Unassigned','Discovered'],['ddl/40_dm_sales_provisioning_layer.sql','DDL','DM','Vertrieb','Low','Unassigned','Discovered'],['quality/02_reconciliation_core_vs_dm.sas','Quality','CTL','Plattform','Medium','Unassigned','Discovered'],['documentation/diagrams/01_architecture_layers.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],['documentation/diagrams/02_orchestration_sequence.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],['STG_INS.*','Schema','STG','Plattform','?','?','DDL only']];
- return `<div class="h-full p-4 overflow-auto"><div class="flex flex-wrap gap-2 mb-3"><input placeholder="Search" class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><select class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><option>Layer</option></select><select class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><option>Type</option></select><select class="px-2 py-1 bg-base-800 border border-slate-700 rounded"><option>Domain</option></select><button id="exportCsv" class="ml-auto px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/40">Export Inventory</button></div><div class="grid grid-cols-3 gap-2 mb-3 text-sm">${[['DB2 Tables total',64],['SAS Mapping Scripts',13],['Quality Checks',2]].map(x=>`<div class="rounded border border-slate-700 p-2"><div class="text-slate-400 text-xs">${x[0]}</div><div class="font-semibold">${x[1]}</div></div>`).join('')}</div><div class="text-xs text-right mb-2"><span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10">Agent: Data Gathering / Classification • Run ID: DEMO-001</span></div><table id="inventoryTbl" class="w-full text-xs"><thead><tr class="text-slate-400">${['Artifact','Type','Layer','Domain','Complexity','Owner','Status'].map(h=>`<th class="text-left p-1">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr class="border-t border-slate-800">${r.map(c=>`<td class="p-1">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-}
-function canvasPhase2(){return `<div class="h-full p-4 relative"><div class="mb-2 flex gap-2"><button data-tab="layer" class="tabBtn px-3 py-1 border border-slate-700 rounded">Layer View</button><button data-tab="orch" class="tabBtn px-3 py-1 border border-slate-700 rounded">Orchestration View</button></div><div id="tab-layer" class="tabPane h-[85%] overflow-auto relative"><span class="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-amber-500/20 border border-amber-500/50">Visibility Gap</span><div class="mermaid">${MM.architectureLayers}</div><div class="text-xs text-slate-400">Upstream ETL (STG→WRK→CORE) strukturell vorhanden, aber im Repo nicht sichtbar.</div></div><div id="tab-orch" class="tabPane hidden h-[85%] overflow-auto"><div class="mermaid">${MM.orchestrationSequence}</div><div class="absolute right-4 top-16 p-3 border border-slate-700 rounded bg-base-900 text-xs"><b>Key Observations</b><ul class="list-disc ml-4"><li>Mapping Steps 01..13</li><li>DQ → CTL_DQ_RESULT</li><li>Reconciliation → CTL_RECON_RESULT</li></ul></div></div></div>`}
-function canvasPhase3(){
- const nodes=[['n1',80,90,'run_dm_sales_provisioning.sas','Orchestrator'],['n2',280,90,'mapping/11_fact...sas','Mapping'],['n3',500,90,'macro: m_fact_upsert','Macro'],['n4',740,90,'DM: FKT_VERTRIEBSPROVISIONSEREIGNIS','Fact'],['n5',280,230,'CORE_PROVISION_TRANSACTION','Source'],['n6',500,230,'CORE_FX_RATE','Source'],['n7',640,230,'Rule: FX fallback (≤5 days)','Business Rule']];
- return `<div class="h-full p-3 relative"><svg viewBox="0 0 980 340" class="w-full h-[75%]">${[['n1','n2'],['n2','n3'],['n3','n4'],['n5','n2'],['n6','n7'],['n7','n2']].map(e=>{let a=nodes.find(n=>n[0]==e[0]),b=nodes.find(n=>n[0]==e[1]);return `<line x1="${a[1]+120}" y1="${a[2]}" x2="${b[1]-20}" y2="${b[2]}" stroke="#10b981" stroke-width="2" marker-end="url(#arr)"/>`}).join('')}<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#10b981"/></marker></defs>${nodes.map(n=>`<g class="node cursor-pointer" data-title="${n[3]}" data-type="${n[4]}"><rect x="${n[1]}" y="${n[2]-24}" width="190" height="48" rx="8" fill="#0f172a" stroke="#334155"/><text x="${n[1]+8}" y="${n[2]-2}" fill="#e2e8f0" font-size="11">${n[3]}</text></g>`).join('')}</svg><div id="nodeDrawer" class="absolute top-2 right-2 w-72 border border-slate-700 rounded bg-base-900 p-3 text-xs hidden"></div><div class="border border-slate-700 rounded p-3 text-xs"><b>KPI Spec</b><div>Grain: policy/premium transaction/agent/period</div><div>Primary Source: CORE_PROVISION_TRANSACTION</div><div>Target Fact: FKT_VERTRIEBSPROVISIONSEREIGNIS</div></div></div>`;
-}
-function canvasPhase4(){const rows=[['Netto Provision (CHF)','CORE→DM','FKT_VERTRIEBSPROVISIONSEREIGNIS','Gold','gold.sales_commission_event','Merge idempotent'],['FX Conversion','CORE','CORE_FX_RATE','Silver','silver.fx_rates','Standardize fallback'],['Agent Dim','DM','DIM_VERMITTLER','Gold','gold.dim_agent','SCD2 policy'],['Policy Dim','DM','DIM_POLICE','Gold','gold.dim_policy','SCD validity checks'],['DQ: Completeness','CTL','CTL_DQ_RESULT','Silver','silver.quality_results','Alerting threshold'],['Reconciliation','CTL','CTL_RECON_RESULT','Silver','silver.recon_results','Tolerance per KPI'],['Orchestration','SAS','run_dm_sales_provisioning.sas','Platform','airflow_dag_sales_prov','DAG templates'],['Bridge Split','DM','BR_POLICE_VERMITTLER_AUFTEILUNG','Gold','gold.bridge_policy_agent_split','Incremental load']];
-return `<div class="h-full p-3 grid grid-cols-5 gap-3"><div class="col-span-3 overflow-auto"><table class="w-full text-xs" id="mapTbl"><thead><tr>${['KPI/Asset','IST Layer','IST Artifact','Target Layer','Target Object','Refactoring Hint'].map(h=>`<th class="text-left p-1 text-slate-400">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr data-layer="${r[3]}" class="border-t border-slate-800 hover:bg-slate-800/40 cursor-pointer">${r.map(c=>`<td class="p-1">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="col-span-2 space-y-3">${['Bronze','Silver','Gold'].map(l=>`<div id="layer-${l}" class="p-4 rounded border border-slate-700"><div class="font-semibold">${l}</div></div>${l!=='Gold'?'<div class="text-center">↑</div>':''}`).join('')}</div></div>`}
-function canvasPhase5(){return `<div class="h-full p-3 overflow-auto"><div class="flex gap-2 mb-3"><select class="px-2 py-1 rounded bg-base-900 border border-slate-700"><option>Netto Provision</option></select><input type="date" class="px-2 py-1 rounded bg-base-900 border border-slate-700"><input value="±1.00" class="w-20 px-2 py-1 rounded bg-base-900 border border-slate-700"></div><div class="grid md:grid-cols-3 gap-2 mb-3 text-sm"><div class="border border-slate-700 rounded p-2"><b>ALT (DAWIS)</b><div>Sum 12’345’678.90</div><div>Rows 1’234’567</div></div><div class="border border-slate-700 rounded p-2"><b>NEU (Prototype)</b><div>Sum 12’345’120.10</div><div>Rows 1’234’550</div></div><div class="border border-red-500/60 rounded p-2"><b>Variance</b><div>Δ Sum -558.80</div><div>Δ Rows -17</div><span class="text-red-300 text-xs">FAIL (over tolerance)</span></div></div><div class="border border-slate-700 rounded p-2 mb-3 text-xs"><b>Golden Dataset Samples</b><table class="w-full mt-1"><tr><th>policy</th><th>agent</th><th>event_date</th><th>amount_chf</th><th>rule_flags</th></tr><tr><td>P-100</td><td>A-9</td><td>2026-02-01</td><td>55.20</td><td>fx_fallback</td></tr><tr><td>P-101</td><td>A-2</td><td>2026-02-02</td><td>40.10</td><td>-</td></tr><tr><td>P-102</td><td>A-3</td><td>2026-02-03</td><td>12.00</td><td>-</td></tr><tr><td>P-103</td><td>A-9</td><td>2026-02-03</td><td>87.40</td><td>late_rate</td></tr><tr><td>P-104</td><td>A-1</td><td>2026-02-04</td><td>20.00</td><td>-</td></tr></table></div><div class="border border-slate-700 rounded p-2 text-xs"><b>Decision Log</b><ol class="list-decimal ml-4"><li>Variance traced to missing FX rate (fallback)</li><li>SME decision: accept fallback rule</li><li>Update mapping spec + retest</li></ol></div></div>`}
-function canvasPhase6(){const p=[['Idempotent Fact Merge','Insert-only→Drift','Merge/Upsert→Corrected events propagate','M'],['Proper SCD2 Interval Governance','Overlaps/gaps','Validated intervals + constraints','H'],['Bridge Incremental Load (avoid full refresh)','Full reload every run','Changed keys only','M'],['Operational Observability (step duration + alerts)','Opaque long-running jobs','Step KPIs + alerting','M']];return `<div class="h-full p-3 grid md:grid-cols-2 gap-3">${p.map(x=>`<div class="rounded border border-slate-700 p-3"><div class="flex justify-between"><b>${x[0]}</b><span class="text-xs px-2 py-0.5 rounded border border-slate-600">Complexity: ${x[3]}</span></div><div class="grid grid-cols-2 gap-2 mt-2 text-xs"><div class="border border-slate-700 rounded p-2 bg-slate-800/40"><b>Before</b><div>${x[1]}</div></div><div class="border border-emerald-500/50 rounded p-2"><b>After</b><div>${x[2]}</div></div></div><div class="text-xs mt-2">Expected impact: bessere Datenqualität & stabilerer Betrieb.</div></div>`).join('')}</div>`}
-function canvasPhase7(){return `<div class="h-full p-3 overflow-auto"><div class="mb-2 text-sm border border-slate-700 rounded p-2">Progress Summary: <b>Tests passed: 42 / 45</b></div><div class="grid grid-cols-4 gap-3"><div class="col-span-3"><table class="w-full text-xs"><tr><th>Test</th><th>KPI</th><th>Tolerance</th><th>Variance</th><th>Status</th></tr>${[['T01','Netto Provision','±1.00','0.22','PASS'],['T02','Payout','±1.00','1.70','FAIL'],['T03','Adjustment','±1.00','0.11','PASS'],['T04','Netto Provision','±1.00','0.19','PASS']].map(r=>`<tr class="border-t border-slate-800">${r.map((c,i)=>`<td class="p-1">${i===4?`<span class="px-2 py-0.5 rounded ${c==='PASS'?'bg-emerald-500/20':'bg-red-500/20'}">${c}</span>`:c}</td>`).join('')}</tr>`).join('')}</table></div><div class="border border-slate-700 rounded p-2 text-xs"><b>Run Evidence</b><div>Run ID RUN-2026-02-19-001</div><div>Cutoff 2026-02-18 23:59</div><div>Dataset Version golden-v3</div><div>Commit abc1234</div></div></div><div class="grid md:grid-cols-3 gap-2 mt-3">${['Netto Provision variance','Payout variance','Adjustment variance'].map((t,i)=>`<div class="border border-slate-700 rounded p-2 text-xs"><div>${t}</div><svg viewBox="0 0 140 40" class="w-full h-10"><polyline fill="none" stroke="#10b981" points="0,20 20,19 40,21 60,20 ${i===1?'80,7':'80,20'} 100,20 120,21 140,20"/></svg></div>`).join('')}</div></div>`}
-function canvasTransition(){return `<div class="h-full p-5"><div class="grid md:grid-cols-3 gap-3">${['0-30 Tage: Stabilisierung PoC','31-60 Tage: Industrialization','61-90 Tage: Handover + Scaling'].map(x=>`<div class="border border-slate-700 rounded p-4"><b>${x}</b><ul class="list-disc ml-4 text-sm mt-2"><li>Owner klar</li><li>KPIs tracken</li><li>Governance Checkpoints</li></ul></div>`).join('')}</div></div>`;}
+  const steps = [
+    ['phase-0','AI Setup','Fundament für sicheren PoC-Betrieb.'],
+    ['phase-1','Scope Selection','Artefakte, Prioritäten und Scope definiert.'],
+    ['phase-2','Architecture Reconstruction','IST-Struktur & Kontrollfluss sichtbar.'],
+    ['phase-3','Business Logic & KPI','KPI-Logik & Rule-Chain extrahiert.'],
+    ['phase-4','Mapping','IST auf Target gemappt.'],
+    ['phase-5','Baseline Validation','Alt/Neu Vergleich mit Decision Log.'],
+    ['phase-6','Refactoring','Patterns für Qualität & Skalierung.'],
+    ['phase-7','Validation','Regression Pack mit Evidence.'],
+    ['transition','Transition Plan','Roadmap zur Delivery.']
+  ];
 
+  const body = `
+    <div class="grid md:grid-cols-3 gap-3">
+      ${steps.map((s,i)=>`
+        <a href="#/${s[0]}" class="group rounded-2xl border border-slate-800 bg-base-850 p-4 hover:border-emerald-400 hover:bg-base-800/60 transition">
+          <div class="flex items-center justify-between">
+            <div class="text-xs text-slate-400">Step ${i}</div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300 group-hover:border-emerald-500/40">open</span>
+          </div>
+          <div class="mt-2 font-semibold">${s[1]}</div>
+          <div class="mt-1 text-sm text-slate-400">${s[2]}</div>
+          <div class="mt-3 h-1 rounded-full bg-slate-800 overflow-hidden">
+            <div class="h-full w-1/3 bg-emerald-400/60 group-hover:w-2/3 transition-all duration-300"></div>
+          </div>
+        </a>
+      `).join('')}
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'Overview: Vorgehensmodell (AI Speedboat)',
+    subtitle: 'Klickbare Timeline – jede Phase liefert ein Demo-Artefakt.',
+    legendBadges: ['Demo data only', 'Consulting-grade'],
+    bodyHtml: body,
+    footerHtml: 'Overview • Jump through phases'
+  });
+}
+
+function canvasPhase0(){
+  const body = `
+    <div class="grid gap-3">
+      ${lane('Security & Governance', ['Entra ID (RBAC)','Key Vault','Policy/Guardrails','Audit Logging'])}
+      ${lane('AI Runtime', ['Web UI','Orchestrator/Agent Runner','Azure OpenAI','Prompt Templates','Content Filters'], 5)}
+      ${lane('Data & Knowledge', ['Artefakt Store','Metadata DB','Vector Index/Search','Evidence Log Storage'], 4)}
+      <div class="rounded-xl border border-slate-800 bg-base-850 p-3 text-xs text-slate-300">
+        <div class="flex items-center justify-between gap-2">
+          <div class="font-semibold text-slate-200">Key Flows</div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40">PoC</span>
+        </div>
+        <div class="mt-2 grid md:grid-cols-2 gap-2">
+          ${miniFlow('Web UI', 'Orchestrator', 'OpenAI')}
+          ${miniFlow('Orchestrator', 'Vector Index', 'Evidence Log')}
+        </div>
+      </div>
+    </div>
+  `;
+  return canvasShell({
+    title: 'AI Hub Reference Architecture (PoC)',
+    subtitle: 'Swimlanes für Governance, Runtime und Knowledge Layer.',
+    legendBadges: ['Demo data only', 'Audit-ready', 'Reproducible runs', 'Private data: OFF'],
+    bodyHtml: body,
+    footerHtml: 'Phase 0 • Foundation that removes friction later'
+  });
+
+  function lane(label, items, cols=4){
+    return `
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold text-emerald-200">${label}</div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">${items.length} components</span>
+        </div>
+        <div class="mt-3 grid grid-cols-2 md:grid-cols-${cols} gap-2">
+          ${items.map(x=>`
+            <div class="rounded-xl border border-slate-800 bg-base-900 p-2 text-xs text-slate-200/90 hover:border-emerald-500/30 transition">
+              ${x}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  function miniFlow(a,b,c){
+    return `
+      <div class="rounded-xl border border-slate-800 bg-base-900 p-3">
+        <div class="text-[10px] text-slate-400 mb-2">flow</div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="px-2 py-1 rounded-lg border border-slate-800 bg-base-850">${a}</span>
+          <span class="text-emerald-400">→</span>
+          <span class="px-2 py-1 rounded-lg border border-slate-800 bg-base-850">${b}</span>
+          <span class="text-emerald-400">→</span>
+          <span class="px-2 py-1 rounded-lg border border-slate-800 bg-base-850">${c}</span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function canvasPhase1(){
+  const rows = [
+    ['sas/run_dm_sales_provisioning.sas','Orchestrator','CORE→DM','Vertrieb','High','Unassigned','Discovered'],
+    ['sas/mapping/11_fact_vertriebsprovisionsereignis.sas','Mapping','DM','Vertrieb','High','Unassigned','Discovered'],
+    ['sas/macros/m_fact_upsert.sas','Macro','Shared','Plattform','Medium','Unassigned','Discovered'],
+    ['ddl/40_dm_sales_provisioning_layer.sql','DDL','DM','Vertrieb','Low','Unassigned','Discovered'],
+    ['quality/02_reconciliation_core_vs_dm.sas','Quality','CTL','Plattform','Medium','Unassigned','Discovered'],
+    ['documentation/diagrams/01_architecture_layers.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],
+    ['documentation/diagrams/02_orchestration_sequence.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],
+    ['STG_INS.*','Schema','STG','Plattform','?','?','DDL only']
+  ];
+
+  const body = `
+    <div class="flex flex-wrap gap-2">
+      <div class="flex-1 min-w-[220px]">
+        <input id="invSearch" placeholder="Search artifacts…" class="w-full px-3 py-2 rounded-xl bg-base-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
+      </div>
+      ${filterSelect('Layer')}
+      ${filterSelect('Type')}
+      ${filterSelect('Domain')}
+      <button id="exportCsv"
+        class="ml-auto px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/35 hover:bg-emerald-500/20 transition text-sm">
+        Export CSV
+      </button>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-2 mt-3">
+      ${miniKpi('DB2 Tables (total)', '64')}
+      ${miniKpi('SAS Mapping Scripts', '13')}
+      ${miniKpi('Quality Checks', '2')}
+    </div>
+
+    <div class="mt-3 flex items-center justify-end">
+      <span class="text-[10px] px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
+        Agent: Data Gathering / Classification • Run ID: DEMO-001
+      </span>
+    </div>
+
+    <div class="mt-3 rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
+      <div class="overflow-auto">
+        <table id="inventoryTbl" class="w-full text-xs">
+          <thead class="bg-base-900/60">
+            <tr class="text-slate-400">
+              ${['Artifact','Type','Layer','Domain','Complexity','Owner','Status'].map(h=>`<th class="text-left px-3 py-2 whitespace-nowrap">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody id="invBody">
+            ${rows.map(r=>inventoryRow(r)).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'Artefakt-Inventar (Agent View)',
+    subtitle: 'AI-gestützte Übersicht über Code, DDL, Quality & Docs.',
+    legendBadges: ['Demo data only', 'Exportable inventory'],
+    bodyHtml: body,
+    footerHtml: 'Phase 1 • Inventory + classification = scope safety'
+  });
+
+  function filterSelect(label){
+    return `
+      <select class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
+        <option>${label}</option>
+      </select>
+    `;
+  }
+  function miniKpi(label, value){
+    return `
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="text-xs text-slate-400">${label}</div>
+        <div class="mt-1 text-lg font-semibold">${value}</div>
+      </div>
+    `;
+  }
+  function badge(text, kind){
+    const map = {
+      High: 'bg-red-500/15 border-red-500/30 text-red-200',
+      Medium: 'bg-amber-500/15 border-amber-500/30 text-amber-200',
+      Low: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200',
+      Discovered: 'bg-slate-800/40 border-slate-700 text-slate-200',
+      Generated: 'bg-emerald-500/12 border-emerald-500/25 text-emerald-200',
+      'DDL only': 'bg-slate-800/40 border-slate-700 text-slate-200',
+      '?': 'bg-slate-800/40 border-slate-700 text-slate-200',
+    };
+    const cls = map[text] || 'bg-slate-800/40 border-slate-700 text-slate-200';
+    return `<span class="px-2 py-0.5 rounded-full border ${cls} text-[10px] whitespace-nowrap">${text}</span>`;
+  }
+  function inventoryRow(r){
+    return `
+      <tr class="border-t border-slate-800 hover:bg-base-900/50 transition">
+        <td class="px-3 py-2 min-w-[320px]">
+          <div class="font-medium text-slate-200">${r[0]}</div>
+          <div class="text-[10px] text-slate-400">evidence: file/path</div>
+        </td>
+        <td class="px-3 py-2 whitespace-nowrap">${r[1]}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${r[2]}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${r[3]}</td>
+        <td class="px-3 py-2">${badge(r[4], 'complexity')}</td>
+        <td class="px-3 py-2 whitespace-nowrap text-slate-300">${r[5]}</td>
+        <td class="px-3 py-2">${badge(r[6], 'status')}</td>
+      </tr>
+    `;
+  }
+}
+
+function canvasPhase2(){
+  const controls = `
+    <div class="inline-flex rounded-xl border border-slate-700 bg-base-900 overflow-hidden">
+      <button class="tabBtn px-3 py-1.5 text-xs hover:bg-base-850 transition" data-tab="layer">Layer View</button>
+      <button class="tabBtn px-3 py-1.5 text-xs hover:bg-base-850 transition" data-tab="orch">Orchestration</button>
+    </div>
+  `;
+
+  const body = `
+    <div id="tab-layer" class="tabPane relative">
+      <div class="absolute top-3 right-3 z-10">
+        <span class="text-[10px] px-2 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-200">Visibility Gap</span>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="mermaid">${MM.architectureLayers}</div>
+      </div>
+      <div class="mt-2 text-xs text-slate-400">
+        Upstream ETL (STG→WRK→CORE) strukturell vorhanden, aber im Repo nicht sichtbar.
+      </div>
+    </div>
+
+    <div id="tab-orch" class="tabPane hidden relative">
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="mermaid">${MM.orchestrationSequence}</div>
+      </div>
+      <div class="absolute right-3 top-3 p-3 border border-slate-800 rounded-2xl bg-base-900 text-xs shadow-soft">
+        <div class="font-semibold mb-1">Key Observations</div>
+        <ul class="list-disc ml-4 text-slate-200/90">
+          <li>Mapping Steps 01..13</li>
+          <li>DQ → CTL_DQ_RESULT</li>
+          <li>Reconciliation → CTL_RECON_RESULT</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'IST Architektur & Orchestrierung',
+    subtitle: 'Layer & Controlflow – inklusive Gap-Markierung.',
+    legendBadges: ['Mermaid', 'Demo'],
+    controlsHtml: controls,
+    bodyHtml: body,
+    footerHtml: 'Phase 2 • Reconstruction enables targeted refactoring'
+  });
+}
+
+function canvasPhase3(){
+  const nodes = [
+    ['n1',  70,  90, 'run_dm_sales_provisioning.sas', 'Orchestrator'],
+    ['n2', 300,  90, 'mapping/11_fact…sas',          'Mapping'],
+    ['n3', 520,  90, 'macro: m_fact_upsert',         'Macro'],
+    ['n4', 740,  90, 'DM: FKT_VERTR…EREIGNIS',       'Fact'],
+    ['n5', 300, 230, 'CORE_PROVISION_TRANSACTION',   'Source'],
+    ['n6', 520, 230, 'CORE_FX_RATE',                 'Source'],
+    ['n7', 680, 230, 'Rule: FX fallback (≤5 days)',  'Business Rule']
+  ];
+
+  const edges = [['n1','n2'],['n2','n3'],['n3','n4'],['n5','n2'],['n6','n7'],['n7','n2']];
+
+  const body = `
+    <div class="grid lg:grid-cols-5 gap-3">
+      <div class="lg:col-span-4 rounded-2xl border border-slate-800 bg-base-850 p-3 relative">
+        <div class="text-xs text-slate-400 mb-2">KPI: <span class="text-slate-200">Netto Provision (CHF)</span></div>
+
+        <svg viewBox="0 0 980 320" class="w-full h-[320px]">
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="#10b981"></path>
+            </marker>
+            <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity=".35"/></filter>
+          </defs>
+
+          ${edges.map(e=>{
+            const a=nodes.find(n=>n[0]===e[0]), b=nodes.find(n=>n[0]===e[1]);
+            return `<line x1="${a[1]+180}" y1="${a[2]}" x2="${b[1]-16}" y2="${b[2]}" stroke="#10b981" stroke-opacity=".65" stroke-width="2" marker-end="url(#arr)"/>`;
+          }).join('')}
+
+          ${nodes.map(n=>nodeSvg(n)).join('')}
+        </svg>
+
+        <div id="nodeDrawer" class="absolute top-3 right-3 w-80 border border-slate-800 rounded-2xl bg-base-900 p-3 text-xs shadow-soft hidden"></div>
+      </div>
+
+      <div class="lg:col-span-1 rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="font-semibold">KPI Spec</div>
+        <div class="mt-2 text-xs text-slate-400 space-y-1">
+          <div><span class="text-slate-400">Grain:</span> <span class="text-slate-200">policy / premium txn / agent / period</span></div>
+          <div><span class="text-slate-400">Primary Source:</span> <span class="text-slate-200">CORE_PROVISION_TRANSACTION</span></div>
+          <div><span class="text-slate-400">Target Fact:</span> <span class="text-slate-200">FKT_VERTRIEBSPROVISIONSEREIGNIS</span></div>
+        </div>
+        <div class="mt-3 text-[10px] text-slate-400">
+          Click a node to open extracted notes & evidence.
+        </div>
+      </div>
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'Call-Chain Explorer (KPI → Sources)',
+    subtitle: 'Interaktiver Graph: Orchestrator → Mapping → Macro → Fact (+ Rules).',
+    legendBadges: ['Clickable nodes', 'Evidence notes'],
+    bodyHtml: body,
+    footerHtml: 'Phase 3 • From code to auditable KPI spec'
+  });
+
+  function nodeSvg(n){
+    const [id,x,y,label,type] = n;
+    const typeCls = {
+      'Orchestrator':'#10b981',
+      'Mapping':'#22c55e',
+      'Macro':'#34d399',
+      'Fact':'#a7f3d0',
+      'Source':'#60a5fa',
+      'Business Rule':'#fbbf24',
+    }[type] || '#94a3b8';
+
+    return `
+      <g class="node cursor-pointer" data-title="${label}" data-type="${type}" transform="translate(${x},${y-22})" filter="url(#shadow)">
+        <rect width="210" height="44" rx="12" fill="#0b1114" stroke="${typeCls}" stroke-opacity=".55"></rect>
+        <text x="12" y="18" fill="#e2e8f0" font-size="11" font-weight="600">${label}</text>
+        <text x="12" y="34" fill="#94a3b8" font-size="10">${type}</text>
+      </g>
+    `;
+  }
+}
+
+function canvasPhase4(){
+  const rows = [
+    ['Netto Provision (CHF)','CORE→DM','FKT_VERTRIEBSPROVISIONSEREIGNIS','Gold','gold.sales_commission_event','Merge idempotent'],
+    ['FX Conversion','CORE','CORE_FX_RATE','Silver','silver.fx_rates','Standardize fallback'],
+    ['Agent Dim','DM','DIM_VERMITTLER','Gold','gold.dim_agent','SCD2 policy'],
+    ['Policy Dim','DM','DIM_POLICE','Gold','gold.dim_policy','SCD validity checks'],
+    ['DQ: Completeness','CTL','CTL_DQ_RESULT','Silver','silver.quality_results','Alerting threshold'],
+    ['Reconciliation','CTL','CTL_RECON_RESULT','Silver','silver.recon_results','Tolerance per KPI'],
+    ['Orchestration','SAS','run_dm_sales_provisioning.sas','Platform','airflow_dag_sales_prov','DAG templates'],
+    ['Bridge Split','DM','BR_POLICE_VERMITTLER_AUFTEILUNG','Gold','gold.bridge_policy_agent_split','Incremental load'],
+  ];
+
+  const body = `
+    <div class="grid md:grid-cols-5 gap-3">
+      <div class="md:col-span-3 rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
+        <div class="px-3 py-2 text-xs text-slate-400 border-b border-slate-800">Mapping Matrix (click row to highlight target layer)</div>
+        <div class="overflow-auto">
+          <table class="w-full text-xs" id="mapTbl">
+            <thead class="bg-base-900/60">
+              <tr class="text-slate-400">
+                ${['KPI/Asset','IST Layer','IST Artifact','Target Layer','Target Object','Refactoring Hint'].map(h=>`<th class="text-left px-3 py-2 whitespace-nowrap">${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r=>`
+                <tr data-layer="${r[3]}" class="border-t border-slate-800 hover:bg-base-900/50 cursor-pointer transition">
+                  ${r.map((c,i)=>`<td class="px-3 py-2 ${i===0?'font-medium text-slate-200':''} whitespace-nowrap">${c}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="md:col-span-2 space-y-3">
+        ${medallionCard('Bronze','Raw landing / ingestion','Typically file + schema')}
+        ${arrowUp()}
+        ${medallionCard('Silver','Curated / quality-checked','Standardized entities, DQ results')}
+        ${arrowUp()}
+        ${medallionCard('Gold','Serving / KPI-ready','Facts, dims, bridges for BI')}
+      </div>
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'Mapping IST → Target (Medallion)',
+    subtitle: 'Zeile klicken → Layer rechts highlighten (Gold/Silver/Bronze).',
+    legendBadges: ['Clickable mapping', 'Target layers'],
+    bodyHtml: body,
+    footerHtml: 'Phase 4 • Mapping turns analysis into a build plan'
+  });
+
+  function medallionCard(layer, desc, hint){
+    const id = `layer-${layer}`;
+    const accent = layer === 'Gold'
+      ? 'border-emerald-500/35'
+      : layer === 'Silver'
+        ? 'border-slate-700'
+        : 'border-slate-700';
+
+    return `
+      <div id="${id}" class="rounded-2xl border ${accent} bg-base-850 p-4 transition">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold">${layer}</div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">${desc}</span>
+        </div>
+        <div class="mt-2 text-sm text-slate-400">${hint}</div>
+      </div>
+    `;
+  }
+  function arrowUp(){
+    return `<div class="text-center text-emerald-300/60 text-sm select-none">↑</div>`;
+  }
+}
+
+function canvasPhase5(){
+  const body = `
+    <div class="flex flex-wrap items-center gap-2">
+      <select class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
+        <option>Netto Provision</option>
+      </select>
+      <div class="text-xs text-slate-400">Date range</div>
+      <input type="date" class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
+      <input type="date" class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
+      <div class="ml-auto flex items-center gap-2">
+        <span class="text-xs text-slate-400">Tolerance</span>
+        <input value="±1.00" class="w-24 px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-3 mt-3">
+      ${compareCard('ALT (DAWIS)', "12’345’678.90", "1’234’567")}
+      ${compareCard('NEU (Prototype)', "12’345’120.10", "1’234’550")}
+      ${varianceCard()}
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-3 mt-3">
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="font-semibold text-sm">Golden Dataset Samples</div>
+        <div class="overflow-auto mt-2">
+          <table class="w-full text-xs">
+            <thead class="text-slate-400">
+              <tr><th class="text-left py-1">policy</th><th class="text-left py-1">agent</th><th class="text-left py-1">event_date</th><th class="text-left py-1">amount_chf</th><th class="text-left py-1">rule_flags</th></tr>
+            </thead>
+            <tbody class="text-slate-200/90">
+              ${[
+                ['P-100','A-9','2026-02-01','55.20','fx_fallback'],
+                ['P-101','A-2','2026-02-02','40.10','-'],
+                ['P-102','A-3','2026-02-03','12.00','-'],
+                ['P-103','A-9','2026-02-03','87.40','late_rate'],
+                ['P-104','A-1','2026-02-04','20.00','-'],
+              ].map(r=>`<tr class="border-t border-slate-800">${r.map(c=>`<td class="py-1 pr-3 whitespace-nowrap">${c}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="font-semibold text-sm">Decision Log</div>
+        <ol class="mt-2 space-y-2 text-sm list-decimal ml-5 text-slate-200/90">
+          <li>Variance traced to missing FX rate (fallback)</li>
+          <li>SME decision: accept fallback rule</li>
+          <li>Update mapping spec + retest</li>
+        </ol>
+        <div class="mt-3 rounded-xl border border-slate-800 bg-base-900 p-3 text-xs text-slate-400">
+          outcome: baseline accepted after rule clarification
+        </div>
+      </div>
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'Alt vs Neu Comparator (Golden Dataset)',
+    subtitle: 'Toleranz-getriebene Entscheidung + dokumentierter Trace.',
+    legendBadges: ['Comparator', 'Decision log'],
+    bodyHtml: body,
+    footerHtml: 'Phase 5 • Baseline before refactoring = less risk'
+  });
+
+  function compareCard(title, sum, rows){
+    return `
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-4">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold">${title}</div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">snapshot</span>
+        </div>
+        <div class="mt-3 text-sm text-slate-400">Sum</div>
+        <div class="text-lg font-semibold">${sum}</div>
+        <div class="mt-2 text-sm text-slate-400">Rows</div>
+        <div class="font-semibold">${rows}</div>
+      </div>
+    `;
+  }
+  function varianceCard(){
+    return `
+      <div class="rounded-2xl border border-red-500/35 bg-red-500/8 p-4">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold">Variance</div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full border border-red-500/35 bg-red-500/10 text-red-200">FAIL</span>
+        </div>
+        <div class="mt-3 text-sm text-slate-400">Δ Sum</div>
+        <div class="text-lg font-semibold text-red-100">-558.80</div>
+        <div class="mt-2 text-sm text-slate-400">Δ Rows</div>
+        <div class="font-semibold text-red-100">-17</div>
+        <div class="mt-3 text-xs text-slate-300">over tolerance → trace & decision</div>
+      </div>
+    `;
+  }
+}
+
+function canvasPhase6(){
+  const patterns = [
+    ['Idempotent Fact Merge','Insert-only → Drift','Merge/Upsert → corrected events propagate','M'],
+    ['Proper SCD2 Interval Governance','Overlaps / gaps','Validated intervals + constraints','H'],
+    ['Bridge Incremental Load','Full reload every run','Changed keys only','M'],
+    ['Operational Observability','Opaque long-running jobs','Step KPIs + alerting','M']
+  ];
+
+  const body = `
+    <div class="grid md:grid-cols-2 gap-3">
+      ${patterns.map(p=>patternCard(p)).join('')}
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'Refactoring Pattern Board (Before / After)',
+    subtitle: 'Patterns für Stabilität, Qualität, Skalierung.',
+    legendBadges: ['Patterns', 'Before/After'],
+    bodyHtml: body,
+    footerHtml: 'Phase 6 • Build with reusable patterns'
+  });
+
+  function patternCard([title,before,after,cx]){
+    const cxCls = cx === 'H'
+      ? 'bg-red-500/15 border-red-500/30 text-red-200'
+      : 'bg-amber-500/15 border-amber-500/30 text-amber-200';
+
+    return `
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-4 hover:border-emerald-500/25 transition">
+        <div class="flex items-start justify-between gap-3">
+          <div class="font-semibold">${title}</div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full border ${cxCls}">Complexity: ${cx}</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
+          <div class="rounded-xl border border-slate-800 bg-base-900 p-3">
+            <div class="text-slate-400 mb-1">Before</div>
+            <div class="text-slate-200/90 font-medium">${before}</div>
+          </div>
+          <div class="rounded-xl border border-emerald-500/25 bg-emerald-500/6 p-3">
+            <div class="text-emerald-200/80 mb-1">After</div>
+            <div class="text-slate-200/90 font-medium">${after}</div>
+          </div>
+        </div>
+
+        <div class="mt-3 text-xs text-slate-400">
+          Expected impact: weniger Drift, bessere Debuggability, stabiler Betrieb.
+        </div>
+      </div>
+    `;
+  }
+}
+
+function canvasPhase7(){
+  const tests = [
+    ['T01','Netto Provision','±1.00','0.22','PASS'],
+    ['T02','Payout','±1.00','1.70','FAIL'],
+    ['T03','Adjustment','±1.00','0.11','PASS'],
+    ['T04','Netto Provision','±1.00','0.19','PASS'],
+    ['T05','Payout','±1.00','0.08','PASS'],
+    ['T06','Netto Provision','±1.00','0.03','PASS'],
+  ];
+
+  const body = `
+    <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-semibold">Progress Summary</div>
+        <div class="text-sm"><b>42</b> / 45</div>
+      </div>
+      <div class="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
+        <div class="h-full w-[93%] bg-emerald-400/70"></div>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-4 gap-3 mt-3">
+      <div class="md:col-span-3 rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
+        <div class="px-3 py-2 text-xs text-slate-400 border-b border-slate-800">Regression Tests</div>
+        <div class="overflow-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-base-900/60 text-slate-400">
+              <tr>
+                <th class="text-left px-3 py-2">Test</th>
+                <th class="text-left px-3 py-2">KPI</th>
+                <th class="text-left px-3 py-2">Tolerance</th>
+                <th class="text-left px-3 py-2">Variance</th>
+                <th class="text-left px-3 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tests.map(r=>`
+                <tr class="border-t border-slate-800 hover:bg-base-900/50 transition">
+                  <td class="px-3 py-2 font-medium">${r[0]}</td>
+                  <td class="px-3 py-2">${r[1]}</td>
+                  <td class="px-3 py-2">${r[2]}</td>
+                  <td class="px-3 py-2">${r[3]}</td>
+                  <td class="px-3 py-2">${statusBadge(r[4])}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-4">
+        <div class="font-semibold">Run Evidence</div>
+        <div class="mt-2 text-xs text-slate-400 space-y-1">
+          <div><span class="text-slate-400">Run ID:</span> <span class="text-slate-200">RUN-2026-02-19-001</span></div>
+          <div><span class="text-slate-400">Cutoff:</span> <span class="text-slate-200">2026-02-18 23:59</span></div>
+          <div><span class="text-slate-400">Dataset:</span> <span class="text-slate-200">golden-v3</span></div>
+          <div><span class="text-slate-400">Commit:</span> <span class="text-slate-200">abc1234</span></div>
+        </div>
+        <div class="mt-3 text-[10px] text-slate-400">evidence bundle for audit / replay</div>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-3 mt-3">
+      ${spark('Netto Provision variance', false)}
+      ${spark('Payout variance', true)}
+      ${spark('Adjustment variance', false)}
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'KPI Regression Pack (Run Evidence)',
+    subtitle: 'Regression Tabelle + Evidence + Trends.',
+    legendBadges: ['Go/No-Go', 'Evidence'],
+    bodyHtml: body,
+    footerHtml: 'Phase 7 • Objective release readiness'
+  });
+
+  function statusBadge(s){
+    return s === 'PASS'
+      ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 text-[10px]">PASS</span>`
+      : `<span class="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-200 text-[10px]">FAIL</span>`;
+  }
+  function spark(title, spike){
+    const pts = spike ? "0,22 20,21 40,22 60,21 80,10 100,22 120,21 140,22" : "0,22 20,21 40,22 60,21 80,22 100,21 120,22 140,21";
+    return `
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="text-xs text-slate-400">${title}</div>
+        <svg viewBox="0 0 140 40" class="w-full h-10 mt-2">
+          <line x1="0" y1="22" x2="140" y2="22" stroke="rgba(148,163,184,.25)" />
+          <polyline fill="none" stroke="${spike ? '#ef4444' : '#10b981'}" stroke-width="2" points="${pts}"/>
+        </svg>
+        <div class="text-[10px] text-slate-400 mt-1">${spike ? 'spike detected → investigate' : 'stable around zero'}</div>
+      </div>
+    `;
+  }
+}
+
+function canvasTransition(){
+  const controls = `
+    <div class="inline-flex rounded-xl border border-slate-700 bg-base-900 overflow-hidden">
+      <button class="tabBtn px-3 py-1.5 text-xs hover:bg-base-850 transition" data-tab="timeline">Timeline</button>
+      <button class="tabBtn px-3 py-1.5 text-xs hover:bg-base-850 transition" data-tab="collab">Collaboration</button>
+    </div>
+  `;
+
+  const body = `
+    <div id="tab-timeline" class="tabPane">
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3 overflow-auto">
+        <div class="text-xs text-slate-400 mb-3">10–12 Wochen PoC (KW10–KW23)</div>
+
+        <div class="min-w-[720px]">
+          <div class="grid grid-cols-14 gap-1 text-[10px] text-slate-400 mb-2">
+            ${['10','11','12','13','14','15','16','17','18','19','20','21','22','23'].map(w=>`<div class="text-center">KW${w}</div>`).join('')}
+          </div>
+
+          ${ganttRow('Kick-off & Scope Definition', 1, 3)}
+          ${ganttRow('AI-Speedboat Setup', 3, 4)}
+          ${ganttRow('Daten-Inventory', 3, 6)}
+          ${ganttRow('AI-gestützte Analyse', 6, 12)}
+          ${ganttRow('Validierung & Review', 12, 14)}
+
+          <div class="mt-3 grid grid-cols-14 gap-1 text-[10px]">
+            <div class="col-span-11"></div>
+            <div class="col-span-2 text-center px-2 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">Demo</div>
+            <div class="col-span-1 text-center px-2 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200">Decision</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-collab" class="tabPane hidden">
+      <div class="grid md:grid-cols-3 gap-3">
+        ${roleCard('Dirk Budke', 'Data Engineer Warehouse Migration', ['Migration Enablement', 'Pipelines/Standards', 'Data Modeling Support'])}
+        ${roleCard('Lukas', 'Senior AI Solutions Architect', ['AI Speedboat Method', 'Agent Workflows', 'Evidence & Demo Pack'])}
+        ${roleCard('Bruno/Christian', 'Steering / Domain', ['Scope & Priorities', 'SME Decisions', 'Sign-off Gates'])}
+      </div>
+
+      <div class="mt-3 rounded-2xl border border-slate-800 bg-base-850 p-3 overflow-auto">
+        <div class="text-xs text-slate-400 mb-2">Mini RACI</div>
+        <table class="w-full text-xs min-w-[560px]">
+          <thead class="text-slate-400">
+            <tr><th class="text-left py-1">Workstream</th><th class="text-left py-1">R</th><th class="text-left py-1">A</th><th class="text-left py-1">C</th><th class="text-left py-1">I</th></tr>
+          </thead>
+          <tbody class="text-slate-200/90">
+            ${[
+              ['Inventory','Lukas','Bruno/Christian','Dirk','All'],
+              ['Reconstruction','Lukas','Bruno/Christian','Dirk','All'],
+              ['Refactoring','Dirk','Bruno/Christian','Lukas','All'],
+              ['Validation','Lukas','Bruno/Christian','Dirk','All'],
+            ].map(r=>`<tr class="border-t border-slate-800">${r.map(c=>`<td class="py-1 pr-3">${c}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  return canvasShell({
+    title: 'Transition Plan & Collaboration Model',
+    subtitle: 'PoC Roadmap + Rollen/Verantwortungen.',
+    legendBadges: ['Gates', 'RACI'],
+    controlsHtml: controls,
+    bodyHtml: body,
+    footerHtml: 'Transition • from PoC to delivery'
+  });
+
+  function ganttRow(label, startCol, endCol){
+    // startCol/endCol are 1..14 inclusive
+    const span = Math.max(1, endCol - startCol + 1);
+    return `
+      <div class="grid grid-cols-14 gap-1 items-center mb-2">
+        <div class="col-span-14 text-[10px] text-slate-400 mb-1">${label}</div>
+        ${Array.from({length:14}).map((_,i)=>{
+          const col = i+1;
+          const active = col >= startCol && col <= endCol;
+          return `<div class="h-7 rounded-lg border ${active ? 'border-emerald-500/30 bg-emerald-500/12' : 'border-slate-800 bg-base-900'}"></div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function roleCard(name, role, bullets){
+    return `
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-4 hover:border-emerald-500/25 transition">
+        <div class="font-semibold">${name}</div>
+        <div class="text-sm text-slate-400">${role}</div>
+        <ul class="mt-3 space-y-1 text-sm text-slate-200/90">
+          ${bullets.map(x=>`<li class="flex gap-2"><span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400/70"></span><span>${x}</span></li>`).join('')}
+        </ul>
+      </div>
+    `;
+  }
+}
+
+/* ================================
+   Canvas router
+   ================================ */
 function renderCanvas(route){
- const m={ '/':overviewCanvas,'phase-0':canvasPhase0,'phase-1':canvasPhase1,'phase-2':canvasPhase2,'phase-3':canvasPhase3,'phase-4':canvasPhase4,'phase-5':canvasPhase5,'phase-6':canvasPhase6,'phase-7':canvasPhase7,'transition':canvasTransition};
- return (m[route]||overviewCanvas)();
+  const m = {
+    '/': overviewCanvas,
+    'phase-0': canvasPhase0,
+    'phase-1': canvasPhase1,
+    'phase-2': canvasPhase2,
+    'phase-3': canvasPhase3,
+    'phase-4': canvasPhase4,
+    'phase-5': canvasPhase5,
+    'phase-6': canvasPhase6,
+    'phase-7': canvasPhase7,
+    'transition': canvasTransition,
+  };
+  return (m[route] || overviewCanvas)();
 }
+
+/* ================================
+   Page rendering
+   ================================ */
 function renderPage(){
-  const r=(location.hash||'#/').replace('#/','')||'/';
-  const meta=phaseMeta[r];
-  const left=`<section class="col-span-12 lg:col-span-8 rounded-xl border border-slate-700 bg-base-900 aspect-video canvas-grid overflow-hidden relative">${renderCanvas(r)}</section>`;
-  let right='';
-  if(r!=='/'){ right=`<aside class="col-span-12 lg:col-span-4 space-y-3">${renderFacts(meta.facts)}${renderTalk(meta.talk)}${r==='phase-2'?deepDive('Deep Dive: Sichtbare vs. fehlende Lineage','<ul class="list-disc ml-4"><li>CORE→DM Lineage sichtbar</li><li>STG/WRK Loader im Repo nicht sichtbar</li></ul>'):''}${r==='phase-3'?deepDive('Deep Dive: CORE ER Model',`<div class='mermaid'>${MM.coreEr}</div>`):''}${r==='phase-5'?deepDive('Deep Dive: Control Quality Flow',`<div class='mermaid'>${MM.controlQuality}</div><table class='w-full text-xs mt-2'><tr><th>Metric</th><th>Status</th></tr><tr><td>DQ Completeness</td><td>PASS</td></tr><tr><td>Reconciliation Sum</td><td>FAIL</td></tr><tr><td>Reconciliation Rows</td><td>FAIL</td></tr></table>`):''}</aside>`; }
-  el('content').innerHTML = `<h1 class="text-xl font-semibold mb-4">${meta?meta.title:'Overview'}</h1><div class="grid grid-cols-12 gap-4">${left}${right}</div>`;
+  const route = getRoute();
+
+  // top subtitle
+  const meta = phaseMeta[route];
+  el('topSub').textContent = meta ? meta.subtitle : 'Vorgehen: von IST-Blackbox zu Target-Blueprint – demo-ready Artefakte pro Phase';
+
   renderNav();
-  wireInteractions(r);
-  mermaid.initialize({startOnLoad:false, theme: document.documentElement.classList.contains('dark')?'dark':'default'});
-  mermaid.run({querySelector:'.mermaid'});
+
+  const title = meta ? meta.title : 'Overview';
+  const subtitle = meta ? meta.subtitle : 'Klickbare Timeline – jede Phase liefert ein Demo-Artefakt.';
+  const left = renderCanvas(route);
+  const right = route === '/' ? '' : renderRightPanel(route);
+
+  el('content').innerHTML = `
+    <div class="mb-4">
+      <div class="flex items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">${title}</h1>
+          <div class="text-sm text-slate-400 mt-1">${subtitle}</div>
+        </div>
+        <div class="hidden md:flex items-center gap-2">
+          <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">single-file</span>
+          <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">tailwind + mermaid</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-4">
+      ${left}
+      ${right}
+    </div>
+  `;
+
+  wireInteractions(route);
+
+  applyMermaidTheme();
+  mermaid.run({ querySelector: '.mermaid' });
 }
+
+/* ================================
+   Interactions
+   ================================ */
+function openDrawer(){
+  el('drawer').classList.remove('-translate-x-full');
+  el('backdrop').classList.add('show');
+}
+function closeDrawer(){
+  el('drawer').classList.add('-translate-x-full');
+  el('backdrop').classList.remove('show');
+}
+
 function wireInteractions(route){
-  el('menuBtn').onclick=()=>el('drawer').classList.toggle('-translate-x-full');
-  if(el('exportCsv')) el('exportCsv').onclick=()=>{ const rows=[...document.querySelectorAll('#inventoryTbl tr')].map(tr=>[...tr.children].map(td=>`"${td.innerText}"`).join(',')); const blob=new Blob([rows.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory.csv'; a.click();};
-  document.querySelectorAll('.tabBtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabPane').forEach(p=>p.classList.add('hidden'));el('tab-'+(b.dataset.tab==='layer'?'layer':'orch')).classList.remove('hidden'); mermaid.run({querySelector:'.mermaid'});});
-  document.querySelectorAll('.node').forEach(n=>n.onclick=()=>{ const d=el('nodeDrawer'); d.classList.remove('hidden'); d.innerHTML=`<div class='font-semibold'>${n.dataset.title}</div><div class='text-emerald-400 mb-2'>${n.dataset.type}</div><ul class='list-disc ml-4'><li>Extracted notes: Rule-/Mapping-Relevanz erkannt.</li><li>Source reference: SAS/CORE Artefakte verknüpft.</li></ul>`; });
-  document.querySelectorAll('#mapTbl tr[data-layer]').forEach(tr=>tr.onclick=()=>{['Bronze','Silver','Gold'].forEach(l=>el('layer-'+l)?.classList.remove('border-emerald-400','shadow-[0_0_0_1px_rgba(16,185,129,0.5)]')); const layer=tr.dataset.layer; if(el('layer-'+layer)){el('layer-'+layer).classList.add('border-emerald-400','shadow-[0_0_0_1px_rgba(16,185,129,0.5)]');}})
+  // Drawer
+  el('menuBtn').onclick = openDrawer;
+  el('closeDrawer').onclick = closeDrawer;
+  el('backdrop').onclick = closeDrawer;
+  document.querySelectorAll('#nav a').forEach(a => {
+    a.addEventListener('click', ()=> {
+      if(window.innerWidth < 768) closeDrawer();
+    });
+  });
+
+  // Fullscreen button for canvas
+  document.querySelectorAll('[data-action="fullscreen"]').forEach(btn => {
+    btn.onclick = () => {
+      const canvas = btn.closest('section')?.querySelector('.aspect-video');
+      if(!canvas) return;
+      if(document.fullscreenElement) document.exitFullscreen();
+      else canvas.requestFullscreen?.();
+    };
+  });
+
+  // CSV Export
+  const exportBtn = document.getElementById('exportCsv');
+  if(exportBtn){
+    exportBtn.onclick = ()=> {
+      const table = document.getElementById('inventoryTbl');
+      const rows = [...table.querySelectorAll('tr')].map(tr =>
+        [...tr.children].map(td => `"${(td.innerText||'').replaceAll('"','""')}"`).join(',')
+      );
+      const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'inventory.csv';
+      a.click();
+      toast('CSV exportiert');
+    };
+
+    const search = document.getElementById('invSearch');
+    const body = document.getElementById('invBody');
+    if(search && body){
+      const all = body.innerHTML;
+      search.addEventListener('input', () => {
+        const q = search.value.toLowerCase().trim();
+        if(!q){ body.innerHTML = all; return; }
+        const rows = [...body.querySelectorAll('tr')].filter(tr => tr.innerText.toLowerCase().includes(q));
+        body.innerHTML = rows.map(tr => tr.outerHTML).join('');
+      });
+    }
+  }
+
+  // Tabs
+  document.querySelectorAll('.tabBtn').forEach(btn => {
+    btn.onclick = () => {
+      const tab = btn.dataset.tab;
+      const root = btn.closest('.aspect-video') || document;
+      root.querySelectorAll('.tabPane').forEach(p => p.classList.add('hidden'));
+      const pane = root.querySelector(`#tab-${tab}`);
+      if(pane) pane.classList.remove('hidden');
+
+      // active styling
+      const group = btn.parentElement;
+      group.querySelectorAll('.tabBtn').forEach(b => b.classList.remove('text-emerald-200','bg-emerald-500/10'));
+      btn.classList.add('text-emerald-200','bg-emerald-500/10');
+
+      applyMermaidTheme();
+      mermaid.run({ querySelector: '.mermaid' });
+    };
+  });
+
+  // Default tab selection for pages with tabs
+  if(route === 'phase-2' || route === 'transition'){
+    const firstTab = document.querySelector('.tabBtn');
+    if(firstTab) firstTab.click();
+  }
+
+  // Phase 3 node drawer
+  document.querySelectorAll('.node').forEach(n => {
+    n.addEventListener('click', () => {
+      const d = document.getElementById('nodeDrawer');
+      if(!d) return;
+      d.classList.remove('hidden');
+      d.innerHTML = `
+        <div class="font-semibold">${n.dataset.title}</div>
+        <div class="text-emerald-300 text-[10px] mb-2">${n.dataset.type}</div>
+        <div class="rounded-xl border border-slate-800 bg-base-850 p-2">
+          <div class="text-[10px] text-slate-400 mb-1">Extracted notes</div>
+          <ul class="list-disc ml-4 text-slate-200/90">
+            <li>Rule-/Mapping-Relevanz erkannt</li>
+            <li>Quellobjekte & Join-Kontext verknüpft</li>
+            <li>Evidence: SAS/CORE artefacts</li>
+          </ul>
+        </div>
+      `;
+    });
+  });
+
+  // Phase 4 highlight mapping
+  const map = document.getElementById('mapTbl');
+  if(map){
+    map.querySelectorAll('tr[data-layer]').forEach(tr => {
+      tr.addEventListener('click', () => {
+        ['Bronze','Silver','Gold','Platform'].forEach(l=>{
+          const e = document.getElementById('layer-'+l);
+          if(e) e.classList.remove('border-emerald-400','shadow-glow');
+        });
+        const layer = tr.dataset.layer;
+        const target = document.getElementById('layer-'+layer);
+        if(target){
+          target.classList.add('border-emerald-400','shadow-glow');
+          toast(`${layer} highlighted`);
+        } else {
+          toast('Layer not mapped');
+        }
+      });
+    });
+  }
+
+  // Escape closes drawer
+  window.onkeydown = (e) => {
+    if(e.key === 'Escape') closeDrawer();
+  };
 }
-el('themeToggle').onclick=()=>{document.documentElement.classList.toggle('dark'); renderPage();};
-el('printToggle').onclick=()=>document.body.classList.toggle('print-view');
+
+/* ================================
+   Global topbar actions
+   ================================ */
+el('themeToggle').onclick = () => {
+  const dark = document.documentElement.classList.contains('dark');
+  setTheme(!dark);
+  toast(!dark ? 'Dark Mode' : 'Light Mode');
+};
+
+el('printToggle').onclick = () => {
+  document.body.classList.toggle('print-view');
+  toast(document.body.classList.contains('print-view') ? 'Print View on' : 'Print View off');
+};
+
+el('copyLink').onclick = async () => {
+  try{
+    await navigator.clipboard.writeText(location.href);
+    toast('Link kopiert');
+  }catch(e){
+    toast('Copy nicht verfügbar');
+  }
+};
+
 window.addEventListener('hashchange', renderPage);
+
+/* Persist theme */
+const saved = localStorage.getItem('theme');
+if(saved === 'light') document.documentElement.classList.remove('dark');
 renderPage();
 </script>
 </body>
