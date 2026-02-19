@@ -1,137 +1,35 @@
 <!doctype html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WHAT – Vorgehensmodell Demo</title>
-  <style>
-    :root{
-      --bg:#0B1220;--card:#111A2E;--border:#22304D;--text:#E8EEF9;--muted:#A7B3C9;--accent:#19D3A2;--warn:#FFB020;--danger:#FF4D4D;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
-    .sidebar{border-right:1px solid var(--border);padding:16px;position:sticky;top:0;height:100vh;overflow:auto;background:#0d1628}
-    .logo{font-weight:700;margin-bottom:18px}
-    .nav a{display:block;text-decoration:none;color:var(--text);padding:10px;border-radius:10px;border:1px solid transparent;margin-bottom:8px}
-    .nav a:hover,.nav a.active{border-color:var(--border);background:var(--card)}
-    .badge{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:3px 8px;font-size:11px;color:var(--muted)}
-    .main{display:flex;flex-direction:column}
-    .header{position:sticky;top:0;height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding:0 24px;background:rgba(11,18,32,.92);backdrop-filter:blur(6px);z-index:3}
-    .wrap{max-width:1200px;width:100%;padding:24px;margin:0 auto}
-    h1{font-size:32px;margin:0 0 8px}
-    .objective{color:var(--muted);margin-bottom:14px}
-    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-    .chip{border:1px solid rgba(25,211,162,.35);color:var(--accent);border-radius:999px;padding:5px 10px;font-size:12px}
-    .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
-    .section{font-size:12px;color:var(--muted);letter-spacing:.13em;text-transform:uppercase;font-weight:700;margin-bottom:10px}
-    .timeline{display:flex;gap:8px;overflow:auto;padding-bottom:8px}
-    .node{min-width:140px;height:48px;border-radius:999px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);cursor:pointer}
-    .node.active{border-color:var(--accent);color:var(--accent)}
-    .node.done{border-color:#2a8f71;color:#76e4c5}
-    .line{width:26px;height:2px;background:var(--border);align-self:center}
-    .artifact{min-height:460px}
-    .phase-list{display:grid;gap:10px}
-    .phase-item{border:1px solid var(--border);border-radius:10px;padding:12px}
-    ul{margin:8px 0 0 18px;padding:0;color:var(--muted)}
-    li{margin-bottom:5px}
-    .right-col .card{margin-bottom:16px}
-    .muted{color:var(--muted)}
-    @media (max-width:980px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.grid{grid-template-columns:1fr}}
-  </style>
-</head>
-<body>
-<div class="app">
-  <aside class="sidebar">
-    <div class="logo">mesoneer | AI Speedboat</div>
-    <div class="nav" id="nav"></div>
-  </aside>
-  <main class="main">
-    <header class="header">
-      <div id="crumb" class="muted">WHAT › Vorgehensmodell › Overview</div>
-      <label class="badge"><input id="demoMode" type="checkbox" /> Demo Mode</label>
-    </header>
-    <div class="wrap">
-      <h1 id="title"></h1>
-      <div id="objective" class="objective"></div>
-      <div class="chips" id="chips"></div>
-      <div class="grid">
-        <div class="card artifact">
-          <div class="section">Demo Artifact</div>
-          <div id="artifact"></div>
-        </div>
-        <div class="right-col" id="rightCol">
-          <div class="card"><div class="section">Deliverables Snapshot</div><ul id="deliverables"></ul></div>
-          <div class="card"><div class="section">Inputs & Aktivitäten</div><div id="inputs" class="chips"></div><ul id="activities"></ul></div>
-        </div>
-      </div>
-    </div>
-  </main>
-</div>
-<script>
-const phases = [
-  {id:'overview',name:'Overview',badge:'OV',title:'WHAT – Unser bewährtes Vorgehen für Legacy Transformationen mit AI',objective:'Von IST-Reconstruction bis Validierung und Skalierung',chips:['IST-Transparenz','Fachlich validiert','Zielarchitektur-konform'],deliverables:['End-to-End Vorgehensmodell über 0–7 + Transition Plan','Klare Artefakte je Phase mit Demo-Fokus','Abgestimmte Entscheidungsgrundlage für Refactoring','Nachweis fachlicher Gleichwertigkeit Alt vs Neu','Roadmap für Regelbetrieb und Skalierung','Governance, Qualität und Betriebsfähigkeit'],inputs:['RFI Scope','Legacy-Artefakte','Zielarchitektur'],activities:['Phasenmodell abstimmen','Artefakte je Phase definieren','Demo-Storyline strukturieren']},
-  {id:'phase-0',name:'Phase 0 – AI-Setup',badge:'0',title:'Phase 0: AI-Setup – Schaffung des benötigten Fundaments',objective:'Frühzeitige Eliminierung von Compliance-Risiken und Aufbau einer wiederverwendbaren AI-Governance.',chips:['Governance & Compliance','Isolierte Runtime','Freigabe durch Kunde'],deliverables:['Freigegebene AI Landingpage','Dokumentiertes Governance & Compliance Set','Definierte Betriebs- und Zugriffsprozesse','Lauffähige AI Agent Umgebung'],inputs:['DSGVO','EU AI Act','AI Inventory'],activities:['Isolierte Runtime','IaC Terraform','No Training/No Retention','Prompt Shield']},
-  {id:'phase-1',name:'Phase 1 – Data Gathering & Scope',badge:'1',title:'Phase 1: Data Gathering, Classification & Scope',objective:'Vollständige IST-Transparenz und ein klar abgegrenzter PoC-Scope.',chips:['Artefakt-Inventar','Klassifikation','PoC Erfolgskriterien'],deliverables:['Artefakt-Inventar','Schichtzuordnung','PoC Scope inkl. Erfolgskriterien'],inputs:['SAS/SQL Artefakte','Reports','Logs'],activities:['Sammeln','Klassifizieren','Scope eingrenzen']},
-  {id:'phase-2',name:'Phase 2 – Architecture Reconstruction (IST)',badge:'2',title:'Phase 2: Architecture Reconstruction (IST)',objective:'Technische und fachliche Architektur rekonstruieren.',chips:['Lineage Graph','Job Chains','Hotspots'],deliverables:['Pfade & Abhängigkeiten','Lineage-Graphen','Risiko-Hotspots'],inputs:['Artefakt-Inventar','DB2 Metadaten'],activities:['Read/Write Analyse','Abhängigkeitsgraphen','SME Validierung']},
-  {id:'phase-3',name:'Phase 3 – Business Logic & KPI Extraction',badge:'3',title:'Phase 3: Business Logic & KPI Extraction',objective:'KPI-Definitionen und Business-Regeln extrahieren.',chips:['KPI Specs','Regelkatalog','Call Chains'],deliverables:['KPI-Spezifikationen','Regel-Dokumentation','Call-Chain-Graphen'],inputs:['SAS Macros','SQL Jobs'],activities:['KPI Extraktion','SCD Regeln identifizieren']},
-  {id:'phase-4',name:'Phase 4 – Mapping IST → Target (DARTS)',badge:'4',title:'Phase 4: Mapping IST → DARTS Target Architecture',objective:'IST-Logik auf SOLL-Schichten abbilden.',chips:['Mapping Matrix','Target Flows','Refactoring Kandidaten'],deliverables:['Mapping Matrix','Target Data Flows','Refactoring Liste'],inputs:['Ergebnisse Phase 2/3'],activities:['Mapping','Vereinfachung','Patterns ableiten']},
-  {id:'phase-5',name:'Phase 5 – Baseline Validation',badge:'5',title:'Phase 5: Baseline Validation (pre-refactoring)',objective:'Fachlich abgenommene Baseline als Referenz.',chips:['Golden Datasets','Alt vs Neu','Decision Log'],deliverables:['Verifizierte Baseline','Abweichungslog','Golden Datasets'],inputs:['Ergebnisse Phase 3/4'],activities:['Vergleich Alt/Neu','SME Validierung']},
-  {id:'phase-6',name:'Phase 6 – Refactoring & Improvement',badge:'6',title:'Phase 6: Refactoring & Improvement',objective:'Strukturelle und technische Verbesserungen umsetzen.',chips:['Patterns','Data Contracts','Observability'],deliverables:['Refactored Pipelines','Data Contracts','Entscheidungsdoku'],inputs:['Ergebnisse Phase 4/5'],activities:['Patterns umsetzen','Idempotenz/Observability']},
-  {id:'phase-7',name:'Phase 7 – Validation (Alt vs Refactored)',badge:'7',title:'Phase 7: Validation (Alt vs Refactored)',objective:'Nachweis der fachlichen Gleichwertigkeit.',chips:['Parallel Operations','Regression Pack','Evidence Logs'],deliverables:['KPI-Regression Pack','Reconciliation Reports','Validierungsdoku'],inputs:['Cutoff + Toleranzen'],activities:['Parallelbetrieb','Regression','Report Vergleich']},
-  {id:'transition',name:'Transition Plan & Collaboration Model',badge:'TP',title:'Transition Plan & Collaboration Model',objective:'Kontrollierte Überführung in den Regelbetrieb.',chips:['Wellenmodell','Cutover','Hypercare'],deliverables:['Migrations-Roadmap','Rollenmodell','Cutover/Hypercare Plan'],inputs:['Roadmap Vorgaben'],activities:['Wellenmodell','Abschaltplan','Skalierung']}
-];
-
-const nav = document.getElementById('nav');
-const titleEl = document.getElementById('title');
-const objectiveEl = document.getElementById('objective');
-const chipsEl = document.getElementById('chips');
-const deliverablesEl = document.getElementById('deliverables');
-const inputsEl = document.getElementById('inputs');
-const activitiesEl = document.getElementById('activities');
-const artifactEl = document.getElementById('artifact');
-const crumbEl = document.getElementById('crumb');
-const rightCol = document.getElementById('rightCol');
-
-function render(phaseId){
-  const p = phases.find(x=>x.id===phaseId) || phases[0];
-  location.hash = p.id;
-  crumbEl.textContent = `WHAT › Vorgehensmodell › ${p.name}`;
-  titleEl.textContent = p.title;
-  objectiveEl.textContent = p.objective;
-  chipsEl.innerHTML = p.chips.map(c=>`<span class="chip">${c}</span>`).join('');
-  deliverablesEl.innerHTML = p.deliverables.map(d=>`<li>${d}</li>`).join('');
-  inputsEl.innerHTML = p.inputs.map(i=>`<span class="badge">${i}</span>`).join('');
-  activitiesEl.innerHTML = p.activities.map(a=>`<li>${a}</li>`).join('');
-  artifactEl.innerHTML = p.id === 'overview' ? overviewArtifact() : genericArtifact(p);
-  [...nav.querySelectorAll('a')].forEach(a=>a.classList.toggle('active', a.dataset.id===p.id));
-}
-
-function overviewArtifact(){
-  const nodes = phases.slice(1).map((p,i)=>`<div class="node ${i<2?'done':''} ${i===2?'active':''}" data-go="${p.id}">${p.badge} ${p.name.split('–')[0].trim()}</div>${i<8?'<div class="line"></div>':''}`).join('');
-  return `<div class="timeline">${nodes}</div>
-  <div class="phase-list">
-    <div class="phase-item"><strong>0 AI Setup läuft parallel</strong></div>
-    <div class="phase-item">Reconstruction: Steps 1–3</div>
-    <div class="phase-item">Überführung in SOLL: Steps 4–7</div>
-  </div>`;
-}
-
-function genericArtifact(p){
-  return `<div class="phase-list">
-    <div class="phase-item"><strong>Zentrales Demo-Artefakt: ${p.name}</strong><br><span class="muted">Eine kompakte, präsentationsfähige Visualisierung für diese Phase.</span></div>
-    <div class="phase-item">Input → Processing → Deliverable</div>
-    <div class="phase-item">Status: <span class="chip">Demo Ready</span></div>
-  </div>`;
-}
-
-nav.innerHTML = phases.map(p=>`<a href="#${p.id}" data-id="${p.id}"><div style="display:flex;justify-content:space-between;gap:8px"><span>${p.name}</span><span class="badge">${p.badge}</span></div><div class="muted" style="font-size:12px;margin-top:4px">Input / Processing / Deliverable</div></a>`).join('');
-nav.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;e.preventDefault();render(a.dataset.id);});
-artifactEl.addEventListener('click',e=>{const n=e.target.closest('[data-go]');if(n)render(n.dataset.go);});
-document.getElementById('demoMode').addEventListener('change',e=>{rightCol.style.display=e.target.checked?'none':'block';});
-
-render((location.hash||'#overview').slice(1));
-</script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mesoneer AI-Accelerator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18",
+          "react-dom/client": "https://esm.sh/react-dom@18/client",
+          "htm": "https://esm.sh/htm@3",
+          "lucide-react": "https://esm.sh/lucide-react",
+          "react-syntax-highlighter": "https://esm.sh/react-syntax-highlighter@15",
+          "react-syntax-highlighter/dist/esm/styles/prism": "https://esm.sh/react-syntax-highlighter@15/dist/esm/styles/prism",
+          "recharts": "https://esm.sh/recharts@2"
+        }
+      }
+    </script>
+    <style>
+      body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+      .fade-enter { animation: fade .35s ease; }
+      @keyframes fade { from { opacity: .15; transform: translateY(6px);} to { opacity:1; transform:none; } }
+      .pulse-dot { animation: pulse 1.4s infinite; }
+      @keyframes pulse { 0%{opacity:.4;transform:scale(.9)} 70%{opacity:1;transform:scale(1)} 100%{opacity:.4;transform:scale(.9)} }
+      .typing-cursor::after { content: "▋"; animation: blink 1s steps(1) infinite; margin-left: 2px; }
+      @keyframes blink { 50% { opacity: 0; } }
+    </style>
+  </head>
+  <body class="bg-slate-100">
+    <div id="root"></div>
+    <script type="module" src="./src/app.js"></script>
+  </body>
 </html>
