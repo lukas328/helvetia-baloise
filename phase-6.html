@@ -563,16 +563,16 @@ const phaseMeta = {
     talk: ['Vergleich macht Abweichungen sofort sichtbar.', 'Decision Log hält fachliche Entscheidungen fest.', 'Toleranzen steuern objektive Freigabe.']
   },
   'phase-6': {
-    title: 'Phase 6: Refactoring & Improvement',
-    subtitle: 'Patterns statt 1:1 – Qualität & Skalierbarkeit erhöhen.',
+    title: 'Phase 6: Refactoring Blueprint',
+    subtitle: 'Analyse-Deliverables in einen priorisierten Umsetzungsplan übersetzen.',
     facts: {
-      Ziel: 'Qualität + Betriebssicherheit steigern.',
-      Mehrwert: ['Weniger Drift', 'Bessere Nachvollziehbarkeit', 'Stabilerer Betrieb'],
-      Input: ['Validation Findings', 'Performance- & Qualitätsprobleme'],
-      Aktivitäten: ['Pattern-Auswahl', 'Before/After Design', 'Priorisierung'],
-      Deliverables: ['Pattern Board', 'Expected Effects', 'Umsetzungsreihenfolge']
+      Ziel: 'Risiken aus DQ/Lineage/ETL in konkrete Refactoring-Arbeitspakete überführen.',
+      Mehrwert: ['Höhere Datenqualität', 'Besseres Laufzeit- und Alerting-Verhalten', 'Skalierbare, auditierbare Loads'],
+      Input: ['documentation/05 Lineage Matrix', 'documentation/06 Controls & Reconciliation', 'documentation/07 Risks & Recommendations'],
+      Aktivitäten: ['Priorisierte Backlog-Definition (H/M)', 'Before/After Architektur pro Pattern', 'Control-by-Design (CTL_ALERT, Step Duration, Unknown-Rate KPIs)'],
+      Deliverables: ['Refactoring Dashboard', 'Sequenzierter Delivery-Backlog', 'Messbare Erfolgsmetriken pro Pattern']
     },
-    talk: ['Patterns beschleunigen technische Entscheidungen.', 'Before/After macht Nutzen greifbar.', 'Komplexität wird transparent kommuniziert.']
+    talk: ['Die Seite verbindet Risiko-Befunde direkt mit umsetzbaren Engineering-Paketen.', 'Priorisierung folgt Business-Wirkung + Betriebsrisiko, nicht nur technischem Aufwand.', 'Kontrollmetriken sind explizit als Akzeptanzkriterien je Refactoring enthalten.']
   },
   'phase-7': {
     title: 'Phase 7: Validation (Regression Pack)',
@@ -795,16 +795,41 @@ function renderDeepDive(route){
       </details>
     `;
   }
+  if(route === 'phase-6'){
+    return `
+      <details class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft" open>
+        <summary class="cursor-pointer font-semibold">Deep Dive: Priorisierte Maßnahmen aus den Analyse-Dokumenten</summary>
+        <div class="mt-3 text-sm text-slate-200/90 space-y-3">
+          <div>
+            <div class="text-xs uppercase tracking-wide text-slate-400">High Priority (07_risks_and_recommendations)</div>
+            <ul class="list-disc ml-5 mt-1 space-y-1">
+              <li>Runtime-Konfiguration stabilisieren (g_sas_home externalisieren)</li>
+              <li>Fact Loads von insert-only auf merge/update umstellen</li>
+              <li>Upstream Lineage/ETL-Pfade explizit dokumentieren und verlinken</li>
+            </ul>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-wide text-slate-400">Controls aktivieren (06_data_quality_reconciliation_and_controls)</div>
+            <ul class="list-disc ml-5 mt-1 space-y-1">
+              <li>CTL_ALERT bei DQ/Recon-Fehlern aktiv beschreiben</li>
+              <li>Echte Step-Dauer messen (start/end getrennt schreiben)</li>
+              <li>Unknown-Key-Rate als KPI mit Schwellwerten überwachen</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+    `;
+  }
   return '';
 }
 
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', stretchCanvas = false }){
   return `
-    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden ${stretchCanvas ? 'min-h-[calc(100vh-180px)]' : ''}">
+      <div class="${stretchCanvas ? 'h-full min-h-[calc(100vh-180px)]' : 'aspect-video'} canvas-grid relative">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -1351,52 +1376,140 @@ function canvasPhase5(){
 
 function canvasPhase6(){
   const patterns = [
-    ['Idempotent Fact Merge','Insert-only → Drift','Merge/Upsert → corrected events propagate','M'],
-    ['Proper SCD2 Interval Governance','Overlaps / gaps','Validated intervals + constraints','H'],
-    ['Bridge Incremental Load','Full reload every run','Changed keys only','M'],
-    ['Operational Observability','Opaque long-running jobs','Step KPIs + alerting','M']
+    {
+      title:'Idempotent Fact Merge',
+      priority:'H',
+      effort:'M',
+      before:'Insert-only Facts verhindern Korrekturen aus Source-Events.',
+      after:'Merge/Update pro Natural Key inkl. Reprocessing-Fenster.',
+      value:'Datenqualität',
+      kpi:'Korrigierte Events werden in <= 1 Lauf übernommen.'
+    },
+    {
+      title:'SCD2 Interval Governance',
+      priority:'H',
+      effort:'H',
+      before:'Gaps/Overlaps in Gültigkeitsintervallen möglich.',
+      after:'Automatisches Interval-Closing + Overlap Checks.',
+      value:'Historisierung',
+      kpi:'0 Overlaps in produktiven SCD2-Dimensionen.'
+    },
+    {
+      title:'Bridge Incremental Load',
+      priority:'M',
+      effort:'M',
+      before:'Delete+Reload bei jedem Lauf (volatile + teuer).',
+      after:'Inkrementelle Merges anhand Business Grain + valid_from.',
+      value:'Performance',
+      kpi:'Laufzeit Bridge-Layer um >30% reduziert.'
+    },
+    {
+      title:'Operational Alerting',
+      priority:'M',
+      effort:'L',
+      before:'CTL_ALERT vorhanden, aber nicht befüllt.',
+      after:'Automatische Alerts aus DQ/Recon/Run-Status.',
+      value:'Betrieb',
+      kpi:'100% der Blocking-Fehler erzeugen Alert-Einträge.'
+    }
   ];
 
   const body = `
-    <div class="grid md:grid-cols-2 gap-3">
-      ${patterns.map(p=>patternCard(p)).join('')}
+    <div class="grid lg:grid-cols-3 gap-3">
+      <div class="lg:col-span-2 rounded-2xl border border-slate-800 bg-base-850 p-4">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wide">Phase 6 Deliverable</div>
+            <div class="text-sm font-semibold">Priorisierter Refactoring-Backlog aus Dokumentation 05/06/07</div>
+          </div>
+          <span class="text-[10px] px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">Delivery-ready</span>
+        </div>
+
+        <div class="mt-3 space-y-2">
+          ${patterns.map(card).join('')}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-4">
+        <div class="text-xs text-slate-400 uppercase tracking-wide">Quality Gates</div>
+        <div class="text-sm font-semibold mt-1">Akzeptanzkriterien</div>
+        <ul class="mt-3 space-y-2 text-xs text-slate-200/90">
+          <li class="rounded-lg border border-slate-800 bg-base-900 p-2">DQ/Reconciliation: keine ERROR-Verletzungen im Ziel-Fenster.</li>
+          <li class="rounded-lg border border-slate-800 bg-base-900 p-2">Step-Duration: echte Start-/Endzeit pro Step in CTL_BATCH_STEP.</li>
+          <li class="rounded-lg border border-slate-800 bg-base-900 p-2">Unknown-Key-Rate: KPI sichtbar + Alert-Schwellen aktiv.</li>
+          <li class="rounded-lg border border-slate-800 bg-base-900 p-2">Run-Failure erzeugt CTL_ALERT inkl. Severity/Ack.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-4 gap-3 mt-3">
+      ${metric('High Priorities','2','Fokus zuerst auf Datenqualität + Historisierung')}
+      ${metric('Medium Priorities','2','Betriebsstabilität und Laufzeit absichern')}
+      ${metric('Control Gaps','3','aus Dokument 06 adressiert')}
+      ${metric('Lineage Impact','CORE→DM','Traceability über Risiko-Items verbessert')}
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-base-850 p-4 mt-3">
+      <div class="text-xs text-slate-400 uppercase tracking-wide">Umsetzungssequenz</div>
+      <div class="text-sm font-semibold mt-1">10–12 Wochen Vorschlag</div>
+      <div class="mt-3 grid md:grid-cols-4 gap-2 text-xs">
+        ${step('W1–2','Observability Foundation','Runtime Config + Step Duration + Alert Wiring')}
+        ${step('W3–5','Data Correctness','Fact Merge + Reprocessing + Regression')}
+        ${step('W6–8','Historization Hardening','SCD2 Interval Governance + Overlap Checks')}
+        ${step('W9–12','Scale & Audit','Bridge Incremental + Unknown KPI + Go/No-Go Pack')}
+      </div>
     </div>
   `;
 
   return canvasShell({
-    title: 'Refactoring Pattern Board (Before / After)',
-    subtitle: 'Patterns für Stabilität, Qualität, Skalierung.',
-    legendBadges: ['Patterns', 'Before/After'],
+    title: 'Phase 6: Refactoring Dashboard',
+    subtitle: 'Klar priorisiert, visuell ruhig, direkt umsetzbar für Delivery-Planung.',
+    legendBadges: ['Backlog', 'Gates', 'Roadmap'],
     bodyHtml: body,
-    footerHtml: 'Phase 6 • Build with reusable patterns'
+    footerHtml: 'Phase 6 • Fokus auf Wirkung, Lesbarkeit und Umsetzung',
+    stretchCanvas: true
   });
 
-  function patternCard([title,before,after,cx]){
-    const cxCls = cx === 'H'
-      ? 'bg-red-500/15 border-red-500/30 text-red-200'
-      : 'bg-amber-500/15 border-amber-500/30 text-amber-200';
+  function card(item){
+    const prio = item.priority === 'H'
+      ? 'border-red-500/35 bg-red-500/10 text-red-200'
+      : 'border-amber-500/35 bg-amber-500/10 text-amber-200';
 
     return `
-      <div class="rounded-2xl border border-slate-800 bg-base-850 p-4 hover:border-emerald-500/25 transition">
-        <div class="flex items-start justify-between gap-3">
-          <div class="font-semibold">${title}</div>
-          <span class="text-[10px] px-2 py-0.5 rounded-full border ${cxCls}">Complexity: ${cx}</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
-          <div class="rounded-xl border border-slate-800 bg-base-900 p-3">
-            <div class="text-slate-400 mb-1">Before</div>
-            <div class="text-slate-200/90 font-medium">${before}</div>
-          </div>
-          <div class="rounded-xl border border-emerald-500/25 bg-emerald-500/6 p-3">
-            <div class="text-emerald-200/80 mb-1">After</div>
-            <div class="text-slate-200/90 font-medium">${after}</div>
+      <div class="rounded-xl border border-slate-800 bg-base-900 p-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="font-medium text-sm">${item.title}</div>
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] px-2 py-0.5 rounded-full border ${prio}">Prio ${item.priority}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">Effort ${item.effort}</span>
           </div>
         </div>
-
-        <div class="mt-3 text-xs text-slate-400">
-          Expected impact: weniger Drift, bessere Debuggability, stabiler Betrieb.
+        <div class="grid md:grid-cols-2 gap-2 mt-2 text-xs">
+          <div class="rounded-lg border border-slate-800 bg-base-850 p-2"><span class="text-slate-400">Before:</span> ${item.before}</div>
+          <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/6 p-2"><span class="text-emerald-200/80">After:</span> ${item.after}</div>
         </div>
+        <div class="mt-2 text-xs text-slate-300"><span class="text-slate-400">Value Driver:</span> ${item.value}</div>
+        <div class="mt-1 text-xs text-slate-300"><span class="text-slate-400">Messgröße:</span> ${item.kpi}</div>
+      </div>
+    `;
+  }
+
+  function metric(label, value, sub){
+    return `
+      <div class="rounded-xl border border-slate-800 bg-base-850 p-3">
+        <div class="text-xs text-slate-400">${label}</div>
+        <div class="text-lg font-semibold mt-1">${value}</div>
+        <div class="text-xs text-slate-400 mt-1">${sub}</div>
+      </div>
+    `;
+  }
+
+  function step(week, title, desc){
+    return `
+      <div class="rounded-xl border border-slate-800 bg-base-900 p-3">
+        <div class="text-[10px] text-emerald-300">${week}</div>
+        <div class="text-sm font-medium mt-1">${title}</div>
+        <div class="text-xs text-slate-400 mt-1">${desc}</div>
       </div>
     `;
   }
