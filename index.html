@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mesoneer AI-Accelerator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18",
+          "react-dom/client": "https://esm.sh/react-dom@18/client",
+          "htm": "https://esm.sh/htm@3",
+          "lucide-react": "https://esm.sh/lucide-react",
+          "react-syntax-highlighter": "https://esm.sh/react-syntax-highlighter@15",
+          "react-syntax-highlighter/dist/esm/styles/prism": "https://esm.sh/react-syntax-highlighter@15/dist/esm/styles/prism",
+          "recharts": "https://esm.sh/recharts@2"
+        }
+      }
+    </script>
+    <style>
+      body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+      .fade-enter { animation: fade .35s ease; }
+      @keyframes fade { from { opacity: .15; transform: translateY(6px);} to { opacity:1; transform:none; } }
+      .pulse-dot { animation: pulse 1.4s infinite; }
+      @keyframes pulse { 0%{opacity:.4;transform:scale(.9)} 70%{opacity:1;transform:scale(1)} 100%{opacity:.4;transform:scale(.9)} }
+      .typing-cursor::after { content: "▋"; animation: blink 1s steps(1) infinite; margin-left: 2px; }
+      @keyframes blink { 50% { opacity: 0; } }
+    </style>
+  </head>
+  <body class="bg-slate-100">
+    <div id="root"></div>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
