@@ -91,6 +91,11 @@
       opacity: .12;
     }
 
+
+    .canvas-viewport { overflow: auto; }
+    .canvas-zoom-target { transform-origin: top left; }
+    .phase7-shell .canvas-stage { min-height: clamp(760px, 82vh, 1200px); }
+
     @media (prefers-reduced-motion: reduce){
       .transition, .duration-200, .duration-300 { transition: none !important; }
     }
@@ -578,13 +583,13 @@ const phaseMeta = {
     title: 'Phase 7: Validation (Regression Pack)',
     subtitle: 'Objektive Go/No-Go Signale + Evidence Paket.',
     facts: {
-      Ziel: 'Release-fähige Qualitätsaussage.',
-      Mehrwert: ['Objektive Go/No-Go Signale', 'Reproduzierbare Testläufe', 'Auditierbare Nachweise'],
-      Input: ['Regression Testkatalog', 'Golden Datenversion', 'Run Evidence'],
-      Aktivitäten: ['Tests ausführen', 'Varianzen prüfen', 'Evidence paketieren'],
-      Deliverables: ['Regression Tabelle', 'Evidence Card', 'Trend-Sparklines']
+      Ziel: 'Release-Gate mit belastbarer Quality Story für Fachbereich und Audit.',
+      Mehrwert: ['Objektive Go/No-Go Signale über DQ + Reconciliation', 'Reproduzierbare Testläufe inklusive Run-Kontext', 'Schnelle Ursachenanalyse durch Drilldown auf Blocking Checks'],
+      Input: ['CTL_DQ_RESULT, CTL_RECON_RESULT, CTL_BATCH_RUN/STEP', 'Golden Dataset Version + Event-Date Fenster', 'Risiken/Empfehlungen aus Analyse-Dokumentation'],
+      Aktivitäten: ['Gate-Checks gegen harte Schwellen bewerten', 'Fehlertypen nach Kritikalität priorisieren', 'Evidence Bundle für Review, Replay und Freigabe bereitstellen'],
+      Deliverables: ['Go/No-Go Scorecard', 'Failure Breakdown + Top-Risiken', 'Run-Evidence Card inkl. Freigabe-Entscheid']
     },
-    talk: ['Regression Pack verdichtet Qualitätslage.', 'Evidence schafft Reproduzierbarkeit.', 'Sparklines zeigen Stabilität über Zeit.']
+    talk: ['Erst DQ/Reconciliation bewerten, dann erst Business-Freigabe diskutieren.', 'Blocking Findings werden explizit mit Risiko und Next Action verknüpft.', 'Evidence Card macht den Lauf für Audit und Retest eindeutig reproduzierbar.']
   },
   'transition': {
     title: 'Transition Plan & Collaboration',
@@ -715,7 +720,7 @@ function renderRightPanel(route){
   const f = meta.facts;
 
   return `
-    <aside class="col-span-12 lg:col-span-4 space-y-3 lg:sticky lg:top-24 h-fit">
+    <aside class="col-span-12 ${route === 'phase-7' ? 'lg:col-span-3' : 'lg:col-span-4'} space-y-3 lg:sticky lg:top-24 h-fit">
       <div class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -795,16 +800,41 @@ function renderDeepDive(route){
       </details>
     `;
   }
+  if(route === 'phase-7'){
+    return `
+      <details class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft" open>
+        <summary class="cursor-pointer font-semibold">Deep Dive: Phase-7 Best-Practice Checklist</summary>
+        <div class="mt-3 grid gap-3 text-sm">
+          <div class="rounded-xl border border-slate-800 bg-base-850 p-3">
+            <div class="text-xs text-slate-400 uppercase tracking-wide">Gate Design</div>
+            <ul class="mt-2 space-y-1 text-slate-200/90">
+              <li>• Blocking Checks: alle ERROR-DQ-Assertions + RECON-Metriken müssen PASS sein.</li>
+              <li>• Toleranzregeln transparent halten (z. B. ±1.00 auf Summenvergleich).</li>
+              <li>• Go nur bei stabilen Wasserzeichen + abgeschlossenem Run-Ende vergeben.</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-base-850 p-3">
+            <div class="text-xs text-slate-400 uppercase tracking-wide">Operational Focus</div>
+            <ul class="mt-2 space-y-1 text-slate-200/90">
+              <li>• FAILS nach Root-Cause-Cluster gruppieren: Datenqualität, Mapping, Orchestrierung.</li>
+              <li>• Unknown-Key-Rate als Frühindikator überwachen und alarmieren.</li>
+              <li>• Für jeden Fail eine Owner-Action und Retest-Frist festhalten.</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+    `;
+  }
   return '';
 }
 
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', shellClass = '', stageClass = '', bodyClass = '' }){
   return `
-    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden ${shellClass}">
+      <div class="canvas-stage aspect-video canvas-grid relative ${stageClass}">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -828,7 +858,7 @@ function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bo
           </div>
 
           <!-- Canvas body -->
-          <div class="flex-1 min-h-0 overflow-auto p-4">
+          <div class="canvas-viewport flex-1 min-h-0 overflow-auto p-4 ${bodyClass}">
             ${bodyHtml}
           </div>
 
@@ -1404,36 +1434,46 @@ function canvasPhase6(){
 
 function canvasPhase7(){
   const tests = [
-    ['T01','Netto Provision','±1.00','0.22','PASS'],
-    ['T02','Payout','±1.00','1.70','FAIL'],
-    ['T03','Adjustment','±1.00','0.11','PASS'],
-    ['T04','Netto Provision','±1.00','0.19','PASS'],
-    ['T05','Payout','±1.00','0.08','PASS'],
-    ['T06','Netto Provision','±1.00','0.03','PASS'],
+    ['DQ_VPE_COMPLETENESS','Accrual Pflichtfelder vollständig','ERROR','0 failed / 128,442 tested','PASS'],
+    ['DQ_PAYOUT_FK','Payout hat provisionsereignis_key','ERROR','0 failed / 39,188 tested','PASS'],
+    ['DQ_ADJUSTMENT_FK','Adjustment hat provisionsereignis_key','ERROR','0 failed / 8,120 tested','PASS'],
+    ['DQ_BR_SPLIT_100','Bridge-Split pro Police = ~100%','ERROR','17 failed groups','FAIL'],
+    ['RECON_ACCRUAL_NET_LOCAL','Core vs DM Netto Provision','±1.00','0.22','PASS'],
+    ['RECON_PAYOUT_LOCAL','Core vs DM Auszahlung','±1.00','1.70','FAIL'],
+    ['RECON_ADJUSTMENT_LOCAL','Core vs DM Anpassung','±1.00','0.11','PASS'],
+  ];
+
+  const failures = [
+    ['Bridge Split verletzt 100%-Regel', 'High', '17 Policen betroffen', 'Owner: Data Mapping'],
+    ['Payout Reconciliation über Toleranz', 'High', 'Δ = 1.70', 'Owner: Core→DM Load'],
+    ['Unknown-Key-Rate steigt in Vermittler-Dim', 'Medium', '2.8% (Schwelle 1.5%)', 'Owner: Reference Mapping'],
   ];
 
   const body = `
     <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
-      <div class="flex items-center justify-between">
-        <div class="text-sm font-semibold">Progress Summary</div>
-        <div class="text-sm"><b>42</b> / 45</div>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <div class="text-sm font-semibold">Release Gate Scorecard</div>
+          <div class="text-xs text-slate-400 mt-0.5">Blocking Checks (DQ + Reconciliation): <span class="text-red-300">2 FAIL</span> → <b>NO-GO</b></div>
+        </div>
+        <div class="text-sm"><b>5</b> / 7 PASS</div>
       </div>
       <div class="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
-        <div class="h-full w-[93%] bg-emerald-400/70"></div>
+        <div class="h-full w-[71%] bg-emerald-400/70"></div>
       </div>
     </div>
 
     <div class="grid md:grid-cols-4 gap-3 mt-3">
       <div class="md:col-span-3 rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
-        <div class="px-3 py-2 text-xs text-slate-400 border-b border-slate-800">Regression Tests</div>
+        <div class="px-3 py-2 text-xs text-slate-400 border-b border-slate-800">Regression Gate Checks (aus CTL_DQ_RESULT / CTL_RECON_RESULT)</div>
         <div class="overflow-auto">
           <table class="w-full text-xs">
             <thead class="bg-base-900/60 text-slate-400">
               <tr>
-                <th class="text-left px-3 py-2">Test</th>
-                <th class="text-left px-3 py-2">KPI</th>
-                <th class="text-left px-3 py-2">Tolerance</th>
-                <th class="text-left px-3 py-2">Variance</th>
+                <th class="text-left px-3 py-2">Check</th>
+                <th class="text-left px-3 py-2">Beschreibung</th>
+                <th class="text-left px-3 py-2">Schwelle</th>
+                <th class="text-left px-3 py-2">Resultat</th>
                 <th class="text-left px-3 py-2">Status</th>
               </tr>
             </thead>
@@ -1458,25 +1498,63 @@ function canvasPhase7(){
           <div><span class="text-slate-400">Run ID:</span> <span class="text-slate-200">RUN-2026-02-19-001</span></div>
           <div><span class="text-slate-400">Cutoff:</span> <span class="text-slate-200">2026-02-18 23:59</span></div>
           <div><span class="text-slate-400">Dataset:</span> <span class="text-slate-200">golden-v3</span></div>
-          <div><span class="text-slate-400">Commit:</span> <span class="text-slate-200">abc1234</span></div>
+          <div><span class="text-slate-400">Window:</span> <span class="text-slate-200">g_min_event_date rolling</span></div>
+          <div><span class="text-slate-400">Watermark update:</span> <span class="text-slate-200">blocked (run failed)</span></div>
+          <div><span class="text-slate-400">Release Decision:</span> <span class="text-red-200">NO-GO (retest required)</span></div>
         </div>
-        <div class="mt-3 text-[10px] text-slate-400">evidence bundle for audit / replay</div>
+        <div class="mt-3 text-[10px] text-slate-400">Evidence Bundle: run metadata, failed checks, owner actions, retest ticket</div>
       </div>
     </div>
 
+    <div class="rounded-2xl border border-slate-800 bg-base-850 p-3 mt-3 overflow-auto">
+      <div class="text-xs text-slate-400 mb-2">Top Findings & Actions (aus Risk/Recommendation Kontext)</div>
+      <table class="w-full text-xs min-w-[620px]">
+        <thead class="text-slate-400">
+          <tr>
+            <th class="text-left py-2 pr-3">Finding</th>
+            <th class="text-left py-2 pr-3">Severity</th>
+            <th class="text-left py-2 pr-3">Evidence</th>
+            <th class="text-left py-2 pr-3">Next Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${failures.map(f=>`
+            <tr class="border-t border-slate-800">
+              <td class="py-2 pr-3 text-slate-200/90">${f[0]}</td>
+              <td class="py-2 pr-3">${sevBadge(f[1])}</td>
+              <td class="py-2 pr-3 text-slate-300">${f[2]}</td>
+              <td class="py-2 pr-3 text-slate-300">${f[3]}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
     <div class="grid md:grid-cols-3 gap-3 mt-3">
-      ${spark('Netto Provision variance', false)}
-      ${spark('Payout variance', true)}
-      ${spark('Adjustment variance', false)}
+      ${spark('Netto Provision variance trend', false)}
+      ${spark('Payout variance trend', true)}
+      ${spark('Unknown-Key-Rate trend', true, true)}
+    </div>
+  `;
+
+  const zoomControls = `
+    <div class="inline-flex items-center gap-1 rounded-xl border border-slate-700 bg-base-900 px-1 py-1">
+      <button data-zoom="out" class="px-2 py-1 text-xs rounded-lg border border-slate-700 hover:border-emerald-400 transition">−</button>
+      <button data-zoom="reset" class="px-2 py-1 text-xs rounded-lg border border-slate-700 hover:border-emerald-400 transition">100%</button>
+      <button data-zoom="in" class="px-2 py-1 text-xs rounded-lg border border-slate-700 hover:border-emerald-400 transition">+</button>
     </div>
   `;
 
   return canvasShell({
     title: 'KPI Regression Pack (Run Evidence)',
     subtitle: 'Regression Tabelle + Evidence + Trends.',
-    legendBadges: ['Go/No-Go', 'Evidence'],
-    bodyHtml: body,
-    footerHtml: 'Phase 7 • Objective release readiness'
+    legendBadges: ['Go/No-Go', 'Evidence', 'Zoom + Scroll'],
+    controlsHtml: zoomControls,
+    bodyHtml: `<div class="canvas-zoom-target" data-zoom-target>${body}</div>`,
+    footerHtml: 'Phase 7 • Objective release readiness',
+    shellClass: 'phase7-shell lg:col-span-9',
+    stageClass: 'h-[82vh] aspect-auto',
+    bodyClass: 'p-5'
   });
 
   function statusBadge(s){
@@ -1484,16 +1562,21 @@ function canvasPhase7(){
       ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 text-[10px]">PASS</span>`
       : `<span class="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-200 text-[10px]">FAIL</span>`;
   }
-  function spark(title, spike){
+  function sevBadge(s){
+    if(s === 'High') return `<span class="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-200 text-[10px]">High</span>`;
+    return `<span class="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-200 text-[10px]">Medium</span>`;
+  }
+  function spark(title, spike, amber=false){
     const pts = spike ? "0,22 20,21 40,22 60,21 80,10 100,22 120,21 140,22" : "0,22 20,21 40,22 60,21 80,22 100,21 120,22 140,21";
+    const stroke = amber ? '#f59e0b' : (spike ? '#ef4444' : '#10b981');
     return `
       <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
         <div class="text-xs text-slate-400">${title}</div>
         <svg viewBox="0 0 140 40" class="w-full h-10 mt-2">
           <line x1="0" y1="22" x2="140" y2="22" stroke="rgba(148,163,184,.25)" />
-          <polyline fill="none" stroke="${spike ? '#ef4444' : '#10b981'}" stroke-width="2" points="${pts}"/>
+          <polyline fill="none" stroke="${stroke}" stroke-width="2" points="${pts}"/>
         </svg>
-        <div class="text-[10px] text-slate-400 mt-1">${spike ? 'spike detected → investigate' : 'stable around zero'}</div>
+        <div class="text-[10px] text-slate-400 mt-1">${amber ? 'upward drift → enforce threshold alerting' : (spike ? 'spike detected → investigate before release' : 'stable around threshold floor')}</div>
       </div>
     `;
   }
@@ -1683,7 +1766,7 @@ function wireInteractions(route){
   // Fullscreen button for canvas
   document.querySelectorAll('[data-action="fullscreen"]').forEach(btn => {
     btn.onclick = () => {
-      const canvas = btn.closest('section')?.querySelector('.aspect-video');
+      const canvas = btn.closest('section')?.querySelector('.canvas-stage');
       if(!canvas) return;
       if(document.fullscreenElement) document.exitFullscreen();
       else canvas.requestFullscreen?.();
@@ -1723,7 +1806,7 @@ function wireInteractions(route){
   document.querySelectorAll('.tabBtn').forEach(btn => {
     btn.onclick = () => {
       const tab = btn.dataset.tab;
-      const root = btn.closest('.aspect-video') || document;
+      const root = btn.closest('.canvas-stage') || document;
       root.querySelectorAll('.tabPane').forEach(p => p.classList.add('hidden'));
       const pane = root.querySelector(`#tab-${tab}`);
       if(pane) pane.classList.remove('hidden');
@@ -1735,6 +1818,24 @@ function wireInteractions(route){
 
       applyMermaidTheme();
       mermaid.run({ querySelector: '.mermaid' });
+    };
+  });
+
+  // Canvas zoom controls (Phase 7)
+  document.querySelectorAll('[data-zoom]').forEach(btn => {
+    btn.onclick = () => {
+      const stage = btn.closest('section');
+      const target = stage?.querySelector('[data-zoom-target]');
+      if(!target) return;
+      const current = parseFloat(target.dataset.zoom || '1');
+      let next = current;
+      if(btn.dataset.zoom === 'in') next = Math.min(2, current + 0.1);
+      if(btn.dataset.zoom === 'out') next = Math.max(0.7, current - 0.1);
+      if(btn.dataset.zoom === 'reset') next = 1;
+      target.dataset.zoom = String(next);
+      target.style.transform = `scale(${next})`;
+      target.style.width = `${100 / next}%`;
+      toast(`Zoom ${Math.round(next * 100)}%`);
     };
   });
 
