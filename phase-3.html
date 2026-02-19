@@ -534,9 +534,9 @@ const phaseMeta = {
       Mehrwert: ['Regeln werden transparent', 'KPI-Herkunft ist belegbar', 'SME-Review wird beschleunigt'],
       Input: ['SAS Orchestrator', 'Mapping Scripts', 'Core Tabellen & Joins'],
       Aktivitäten: ['Call-Chain Analyse', 'Rule Extraktion', 'KPI Spezifikation'],
-      Deliverables: ['Call-Chain Graph', 'KPI Spec', 'Rule Notes']
+      Deliverables: ['Interaktiver KPI-Call-Chain Explorer', 'Auditierbare KPI Spec inkl. Grain/Natural Key', 'Rulebook inkl. FX-/Reject-Logik & Control-Points']
     },
-    talk: ['KPI wird bis zur Quelle heruntergebrochen.', 'Rules erhalten klare fachliche Notizen.', 'Source-Referenzen unterstützen Auditierbarkeit.']
+    talk: ['Wir zeigen die KPI-Logik als lesbare End-to-End Story: Orchestrator → Mapping → Macro → Fact.', 'Jeder Knoten ist mit belegbarer Dokumentation verknüpft, damit SME und Audit sofort die Quelle sehen.', 'Die Visualisierung zeigt nicht nur Datenfluss, sondern auch Qualitäts-/Kontrollpunkte für belastbare Entscheidungen.']
   },
   'phase-4': {
     title: 'Phase 4: Mapping IST → Target (Medallion)',
@@ -715,7 +715,7 @@ function renderRightPanel(route){
   const f = meta.facts;
 
   return `
-    <aside class="col-span-12 lg:col-span-4 space-y-3 lg:sticky lg:top-24 h-fit">
+    <aside class="col-span-12 ${route === 'phase-3' ? 'lg:col-span-3' : 'lg:col-span-4'} space-y-3 lg:sticky lg:top-24 h-fit">
       <div class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -801,10 +801,10 @@ function renderDeepDive(route){
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', sectionClass = 'col-span-12 lg:col-span-8', frameClass = 'aspect-video' }){
   return `
-    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+    <section class="${sectionClass} rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
+      <div class="${frameClass} canvas-grid relative">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -1101,50 +1101,84 @@ function canvasPhase2(){
 
 function canvasPhase3(){
   const nodes = [
-    ['n1',  70,  90, 'run_dm_sales_provisioning.sas', 'Orchestrator'],
-    ['n2', 300,  90, 'mapping/11_fact…sas',          'Mapping'],
-    ['n3', 520,  90, 'macro: m_fact_upsert',         'Macro'],
-    ['n4', 740,  90, 'DM: FKT_VERTR…EREIGNIS',       'Fact'],
-    ['n5', 300, 230, 'CORE_PROVISION_TRANSACTION',   'Source'],
-    ['n6', 520, 230, 'CORE_FX_RATE',                 'Source'],
-    ['n7', 680, 230, 'Rule: FX fallback (≤5 days)',  'Business Rule']
+    ['n1',  80, 120, 'run_dm_sales_provisioning.sas', 'Orchestrator'],
+    ['n2', 420, 120, '11_fact_vertriebsprovisionsereignis.sas', 'Mapping'],
+    ['n3', 760, 120, 'macro: m_fact_upsert', 'Macro'],
+    ['n4', 1120,120, 'DM.FKT_VERTRIEBSPROVISIONSEREIGNIS', 'Fact'],
+    ['n5', 420, 320, 'DWH_CORE.CORE_PROVISION_TRANSACTION', 'Source'],
+    ['n6', 760, 320, 'DWH_CORE.CORE_FX_RATE', 'Source'],
+    ['n7', 1120,320, 'Rule: FX fallback <= 5 days', 'Business Rule']
   ];
 
   const edges = [['n1','n2'],['n2','n3'],['n3','n4'],['n5','n2'],['n6','n7'],['n7','n2']];
 
+  const controls = `
+    <button id="phase3ZoomOut" class="px-2 py-1 text-xs rounded-lg border border-slate-700 hover:border-emerald-400 transition">−</button>
+    <button id="phase3ZoomReset" class="px-2 py-1 text-xs rounded-lg border border-slate-700 hover:border-emerald-400 transition">100%</button>
+    <button id="phase3ZoomIn" class="px-2 py-1 text-xs rounded-lg border border-slate-700 hover:border-emerald-400 transition">＋</button>
+  `;
+
   const body = `
-    <div class="grid lg:grid-cols-5 gap-3">
-      <div class="lg:col-span-4 rounded-2xl border border-slate-800 bg-base-850 p-3 relative">
-        <div class="text-xs text-slate-400 mb-2">KPI: <span class="text-slate-200">Netto Provision (CHF)</span></div>
+    <div class="space-y-3">
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <div class="text-sm text-slate-300">KPI: <span class="text-slate-100 font-semibold">Netto Provision (CHF)</span></div>
+          <div class="text-[10px] text-slate-400">Scroll + Zoom für bessere Lesbarkeit</div>
+        </div>
 
-        <svg viewBox="0 0 980 320" class="w-full h-[320px]">
-          <defs>
-            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L6,3 z" fill="#10b981"></path>
-            </marker>
-            <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity=".35"/></filter>
-          </defs>
+        <div id="phase3GraphViewport" class="rounded-xl border border-slate-800 bg-base-900 overflow-auto h-[560px]">
+          <div id="phase3GraphInner" class="w-[1600px] h-[700px] origin-top-left transition" style="transform: scale(1)">
+            <svg viewBox="0 0 1600 700" class="w-full h-full">
+              <defs>
+                <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L6,3 z" fill="#10b981"></path>
+                </marker>
+                <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity=".35"/></filter>
+              </defs>
 
-          ${edges.map(e=>{
-            const a=nodes.find(n=>n[0]===e[0]), b=nodes.find(n=>n[0]===e[1]);
-            return `<line x1="${a[1]+180}" y1="${a[2]}" x2="${b[1]-16}" y2="${b[2]}" stroke="#10b981" stroke-opacity=".65" stroke-width="2" marker-end="url(#arr)"/>`;
-          }).join('')}
+              ${edges.map(e=>{
+                const a=nodes.find(n=>n[0]===e[0]), b=nodes.find(n=>n[0]===e[1]);
+                return `<line x1="${a[1]+240}" y1="${a[2]}" x2="${b[1]-24}" y2="${b[2]}" stroke="#10b981" stroke-opacity=".65" stroke-width="3" marker-end="url(#arr)"/>`;
+              }).join('')}
 
-          ${nodes.map(n=>nodeSvg(n)).join('')}
-        </svg>
+              ${nodes.map(n=>nodeSvg(n)).join('')}
+            </svg>
+          </div>
+        </div>
 
-        <div id="nodeDrawer" class="absolute top-3 right-3 w-80 border border-slate-800 rounded-2xl bg-base-900 p-3 text-xs shadow-soft hidden"></div>
+        <div id="nodeDrawer" class="mt-3 border border-slate-800 rounded-2xl bg-base-900 p-3 text-xs shadow-soft hidden"></div>
       </div>
 
-      <div class="lg:col-span-1 rounded-2xl border border-slate-800 bg-base-850 p-3">
-        <div class="font-semibold">KPI Spec</div>
-        <div class="mt-2 text-xs text-slate-400 space-y-1">
-          <div><span class="text-slate-400">Grain:</span> <span class="text-slate-200">policy / premium txn / agent / period</span></div>
-          <div><span class="text-slate-400">Primary Source:</span> <span class="text-slate-200">CORE_PROVISION_TRANSACTION</span></div>
-          <div><span class="text-slate-400">Target Fact:</span> <span class="text-slate-200">FKT_VERTRIEBSPROVISIONSEREIGNIS</span></div>
+      <div class="grid xl:grid-cols-3 gap-3">
+        <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+          <div class="font-semibold">KPI Spec</div>
+          <div class="mt-2 text-xs text-slate-400 space-y-1">
+            <div><span class="text-slate-400">Grain:</span> <span class="text-slate-200">policy / premium txn / agent / period</span></div>
+            <div><span class="text-slate-400">Primary Source:</span> <span class="text-slate-200">CORE_PROVISION_TRANSACTION</span></div>
+            <div><span class="text-slate-400">Target Fact:</span> <span class="text-slate-200">FKT_VERTRIEBSPROVISIONSEREIGNIS</span></div>
+            <div><span class="text-slate-400">Natural Key:</span> <span class="text-slate-200">quell_system_id + praemientransaktion_id + vermittler_key + abrechnungsperiode + abgrenzungsdatum_key</span></div>
+          </div>
         </div>
-        <div class="mt-3 text-[10px] text-slate-400">
-          Click a node to open extracted notes & evidence.
+
+        <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+          <div class="font-semibold mb-2">Embedded Evidence (documentation/*)</div>
+          <ul class="space-y-2 text-xs text-slate-300">
+            <li class="rounded-xl border border-slate-800 bg-base-900 p-2"><div class="text-emerald-300">04_etl_logic_core_to_dm.md</div><div class="text-slate-400">Run order 01..13 + Pattern E: FX fallback/reject logic.</div></li>
+            <li class="rounded-xl border border-slate-800 bg-base-900 p-2"><div class="text-emerald-300">05_lineage_matrix.md</div><div class="text-slate-400">Measure lineage for netto_provision_report_ccy and rejection hooks.</div></li>
+            <li class="rounded-xl border border-slate-800 bg-base-900 p-2"><div class="text-emerald-300">03_entity_model_reference.md</div><div class="text-slate-400">Core transaction grain + DM fact grain used in KPI spec.</div></li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+          <div class="text-xs text-slate-400 mb-2">Lineage control points</div>
+          <div class="mermaid text-xs">flowchart TB
+            A[CORE_PROVISION_TRANSACTION] --> B[11_fact_vertriebsprovisionsereignis.sas]
+            C[CORE_FX_RATE] --> D[FX exact or fallback <=5d]
+            D --> B
+            B --> E[FKT_VERTRIEBSPROVISIONSEREIGNIS]
+            B --> F[CTL_BATCH_STEP row counters]
+            B --> G[CTL_DQ_RESULT and CTL_RECON_RESULT]
+          </div>
         </div>
       </div>
     </div>
@@ -1152,10 +1186,13 @@ function canvasPhase3(){
 
   return canvasShell({
     title: 'Call-Chain Explorer (KPI → Sources)',
-    subtitle: 'Interaktiver Graph: Orchestrator → Mapping → Macro → Fact (+ Rules).',
-    legendBadges: ['Clickable nodes', 'Evidence notes'],
+    subtitle: 'Großes, zoombares Diagramm + dokumentierte KPI-Spezifikation inkl. Lineage Evidence.',
+    legendBadges: ['Zoomable graph', 'Documentation-backed'],
+    controlsHtml: controls,
     bodyHtml: body,
-    footerHtml: 'Phase 3 • From code to auditable KPI spec'
+    footerHtml: 'Phase 3 • From code to auditable KPI spec',
+    sectionClass: 'col-span-12 lg:col-span-9',
+    frameClass: 'min-h-[78vh]'
   });
 
   function nodeSvg(n){
@@ -1170,10 +1207,10 @@ function canvasPhase3(){
     }[type] || '#94a3b8';
 
     return `
-      <g class="node cursor-pointer" data-title="${label}" data-type="${type}" transform="translate(${x},${y-22})" filter="url(#shadow)">
-        <rect width="210" height="44" rx="12" fill="#0b1114" stroke="${typeCls}" stroke-opacity=".55"></rect>
-        <text x="12" y="18" fill="#e2e8f0" font-size="11" font-weight="600">${label}</text>
-        <text x="12" y="34" fill="#94a3b8" font-size="10">${type}</text>
+      <g class="node cursor-pointer" data-title="${label}" data-type="${type}" transform="translate(${x},${y-28})" filter="url(#shadow)">
+        <rect width="280" height="56" rx="14" fill="#0b1114" stroke="${typeCls}" stroke-opacity=".6"></rect>
+        <text x="14" y="23" fill="#e2e8f0" font-size="13" font-weight="600">${label}</text>
+        <text x="14" y="42" fill="#94a3b8" font-size="11">${type}</text>
       </g>
     `;
   }
@@ -1683,7 +1720,7 @@ function wireInteractions(route){
   // Fullscreen button for canvas
   document.querySelectorAll('[data-action="fullscreen"]').forEach(btn => {
     btn.onclick = () => {
-      const canvas = btn.closest('section')?.querySelector('.aspect-video');
+      const canvas = btn.closest('section')?.querySelector('.canvas-grid');
       if(!canvas) return;
       if(document.fullscreenElement) document.exitFullscreen();
       else canvas.requestFullscreen?.();
@@ -1744,21 +1781,112 @@ function wireInteractions(route){
     if(firstTab) firstTab.click();
   }
 
+  // Phase 3 graph zoom controls
+  if(route === 'phase-3'){
+    const inner = document.getElementById('phase3GraphInner');
+    const viewport = document.getElementById('phase3GraphViewport');
+    const zoomIn = document.getElementById('phase3ZoomIn');
+    const zoomOut = document.getElementById('phase3ZoomOut');
+    const zoomReset = document.getElementById('phase3ZoomReset');
+    let scale = 1;
+    const applyScale = ()=>{
+      if(!inner) return;
+      inner.style.transform = `scale(${scale})`;
+      if(zoomReset) zoomReset.textContent = `${Math.round(scale*100)}%`;
+    };
+    const setScale = (next)=>{
+      scale = Math.min(2.2, Math.max(0.6, next));
+      applyScale();
+    };
+    zoomIn && (zoomIn.onclick = ()=> setScale(scale + 0.1));
+    zoomOut && (zoomOut.onclick = ()=> setScale(scale - 0.1));
+    zoomReset && (zoomReset.onclick = ()=> setScale(1));
+    if(viewport){
+      viewport.addEventListener('wheel', (e)=>{
+        if(!e.ctrlKey) return;
+        e.preventDefault();
+        setScale(scale + (e.deltaY < 0 ? 0.05 : -0.05));
+      }, { passive:false });
+    }
+    applyScale();
+  }
+
   // Phase 3 node drawer
+  const phase3Evidence = {
+    'run_dm_sales_provisioning.sas': {
+      file: 'documentation/04_etl_logic_core_to_dm.md',
+      bullets: [
+        'Orchestrator runs mapping steps in strict order 01..13.',
+        'Step 11 is the KPI-critical mapping for accrual fact loading.',
+        'Step telemetry is written via %m_log_run to CTL_BATCH_STEP.'
+      ]
+    },
+    '11_fact_vertriebsprovisionsereignis.sas': {
+      file: 'documentation/04_etl_logic_core_to_dm.md',
+      bullets: [
+        'Primary source is CORE_PROVISION_TRANSACTION plus policy/product/role joins.',
+        'Filter: event_effective_date_key >= g_min_event_date.',
+        'Derives netto_provision_report_ccy and related commission measures.'
+      ]
+    },
+    'macro: m_fact_upsert': {
+      file: 'documentation/04_etl_logic_core_to_dm.md',
+      bullets: [
+        'Insert-only anti-join upsert by configured natural key.',
+        'No updates when non-key attributes change.',
+        'Publishes read/write counters for run logging.'
+      ]
+    },
+    'DM.FKT_VERTRIEBSPROVISIONSEREIGNIS': {
+      file: 'documentation/03_entity_model_reference.md',
+      bullets: [
+        'Central DM fact at accrual event grain.',
+        'Used as linkage anchor for payout and adjustment facts.',
+        'Carries KPI-ready measures for commission analytics.'
+      ]
+    },
+    'DWH_CORE.CORE_PROVISION_TRANSACTION': {
+      file: 'documentation/03_entity_model_reference.md',
+      bullets: [
+        'Transactional grain: one provision/accrual event.',
+        'Business uniqueness: source_system_id + source_provision_event_id.',
+        'Feeds mapping 11 with event context and key references.'
+      ]
+    },
+    'DWH_CORE.CORE_FX_RATE': {
+      file: 'documentation/03_entity_model_reference.md',
+      bullets: [
+        'Grain: source + date + currency pair.',
+        'Joined for reporting currency conversion in fact mappings.',
+        'Missing rates for non-reporting currency trigger rejection.'
+      ]
+    },
+    'Rule: FX fallback <= 5 days': {
+      file: 'documentation/04_etl_logic_core_to_dm.md',
+      bullets: [
+        'Fact mappings attempt exact FX rate first.',
+        'Fallback searches up to five days back.',
+        'Rows without valid FX for non-reporting currency are rejected.'
+      ]
+    }
+  };
+
   document.querySelectorAll('.node').forEach(n => {
     n.addEventListener('click', () => {
       const d = document.getElementById('nodeDrawer');
       if(!d) return;
+      const ev = phase3Evidence[n.dataset.title] || {
+        file: 'documentation/05_lineage_matrix.md',
+        bullets: ['Lineage evidence available in documentation matrix.']
+      };
       d.classList.remove('hidden');
       d.innerHTML = `
         <div class="font-semibold">${n.dataset.title}</div>
         <div class="text-emerald-300 text-[10px] mb-2">${n.dataset.type}</div>
         <div class="rounded-xl border border-slate-800 bg-base-850 p-2">
-          <div class="text-[10px] text-slate-400 mb-1">Extracted notes</div>
+          <div class="text-[10px] text-slate-400 mb-1">Extracted notes (${ev.file})</div>
           <ul class="list-disc ml-4 text-slate-200/90">
-            <li>Rule-/Mapping-Relevanz erkannt</li>
-            <li>Quellobjekte & Join-Kontext verknüpft</li>
-            <li>Evidence: SAS/CORE artefacts</li>
+            ${ev.bullets.map(b=>`<li>${b}</li>`).join('')}
           </ul>
         </div>
       `;

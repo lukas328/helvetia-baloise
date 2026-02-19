@@ -540,15 +540,15 @@ const phaseMeta = {
   },
   'phase-4': {
     title: 'Phase 4: Mapping IST → Target (Medallion)',
-    subtitle: 'IST Assets sauber auf Bronze/Silver/Gold Zielobjekte mappen.',
+    subtitle: 'Lineage, ETL-Run-Order und DQ-Hooks in einen umsetzbaren Zielbauplan übersetzen.',
     facts: {
-      Ziel: 'Migrationspfad mit klaren Zielobjekten.',
-      Mehrwert: ['Tech & Business Brückenschlag', 'Konkrete Landing-Zonen pro Asset', 'Umsetzung wird planbar'],
-      Input: ['IST Modelle', 'KPI/Assets', 'Zielarchitektur & Standards'],
-      Aktivitäten: ['IST → Medallion Mapping', 'Target Objects definieren', 'Refactoring Hints ableiten'],
-      Deliverables: ['Mapping Matrix', 'Target Objects', 'Pattern Hints']
+      Ziel: 'Von Analyse-Output zu einem priorisierten Build-Backlog mit klaren Gold/Silver/Platform Targets.',
+      Mehrwert: ['Lineage bleibt auditierbar bis ins Zielobjekt', 'Run-Order wird deployment-fähig gemacht', 'DQ/Reconciliation wird direkt mitgemappt'],
+      Input: ['05 Lineage Matrix', '04 ETL Logic CORE→DM', '02 Architecture & Data Flow', '06 DQ, Reconciliation & Controls'],
+      Aktivitäten: ['CORE/DM/CTL Artefakte in Ziel-Layer mappen', 'Load-Mode + Natural Key als Upsert-Design festhalten', 'Rejection-Regeln und Monitoring-Hooks je Objekt ergänzen'],
+      Deliverables: ['Priorisierte Mapping-Matrix', 'Target Object Blueprint', 'Implementierungsreihenfolge (W1/W2/W3)']
     },
-    talk: ['Matrix macht Transformation pragmatisch.', 'Medallion-Layer zeigen Zielzustand kompakt.', 'Highlighting unterstützt Diskussionen.']
+    talk: ['Deliverable 1: Grosses Data-Model visualisiert Source→CORE→DM Beziehungslogik verständlich für Business und Tech.', 'Deliverable 2: Mapping-Matrix macht je Objekt Target-Layer, Key-Strategie, Guardrails und Control-Hooks reviewbar.', 'Deliverable 3: Layer-Blueprint (Bronze/Silver/Gold/Platform) priorisiert die Umsetzung für den nächsten Delivery-Sprint.']
   },
   'phase-5': {
     title: 'Phase 5: Baseline Validation',
@@ -769,6 +769,21 @@ function renderDeepDive(route){
       </details>
     `;
   }
+  if(route === 'phase-4'){
+    return `
+      <details class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft" open>
+        <summary class="cursor-pointer font-semibold">Deep Dive: Phase-4 Acceptance Checklist</summary>
+        <div class="mt-3 text-sm text-slate-200/90 space-y-2">
+          <ul class="list-disc ml-5 space-y-1">
+            <li>Alle 13 Mapping-Skripte aus dem Orchestrator sind einer Target-Zone zugeordnet.</li>
+            <li>Für Facts sind Natural Keys + Load-Modes (upsert/full reload) explizit dokumentiert.</li>
+            <li>Rejection-Bedingungen (FX fehlt, fehlendes Fact-Linking) sind als Control Hook modelliert.</li>
+            <li>CTL-Objekte für DQ/Reconciliation sind als Platform Deliverables in Scope.</li>
+          </ul>
+        </div>
+      </details>
+    `;
+  }
   if(route === 'phase-5'){
     return `
       <details class="rounded-2xl border border-slate-800 bg-base-900 p-4 shadow-soft">
@@ -801,10 +816,10 @@ function renderDeepDive(route){
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', fillHeight = false }){
   return `
     <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+      <div class="${fillHeight ? 'h-[82vh]' : 'aspect-video'} canvas-grid relative">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -1181,31 +1196,70 @@ function canvasPhase3(){
 
 function canvasPhase4(){
   const rows = [
-    ['Netto Provision (CHF)','CORE→DM','FKT_VERTRIEBSPROVISIONSEREIGNIS','Gold','gold.sales_commission_event','Merge idempotent'],
-    ['FX Conversion','CORE','CORE_FX_RATE','Silver','silver.fx_rates','Standardize fallback'],
-    ['Agent Dim','DM','DIM_VERMITTLER','Gold','gold.dim_agent','SCD2 policy'],
-    ['Policy Dim','DM','DIM_POLICE','Gold','gold.dim_policy','SCD validity checks'],
-    ['DQ: Completeness','CTL','CTL_DQ_RESULT','Silver','silver.quality_results','Alerting threshold'],
-    ['Reconciliation','CTL','CTL_RECON_RESULT','Silver','silver.recon_results','Tolerance per KPI'],
-    ['Orchestration','SAS','run_dm_sales_provisioning.sas','Platform','airflow_dag_sales_prov','DAG templates'],
-    ['Bridge Split','DM','BR_POLICE_VERMITTLER_AUFTEILUNG','Gold','gold.bridge_policy_agent_split','Incremental load'],
+    ['FKT_VERTRIEBSPROVISIONSEREIGNIS','DWH_CORE','CORE_PROVISION_TRANSACTION + CORE_PREMIUM_TRANSACTION','Gold','gold.fct_sales_commission_event','m_fact_upsert on (quell_system_id,praemientransaktion_id,vermittler_key,abrechnungsperiode,abgrenzungsdatum_key)','Drop row when FX for non-CHF missing','CTL_DQ_RESULT + CTL_RECON_RESULT'],
+    ['FKT_PROVISIONSAUSZAHLUNG','DWH_CORE','CORE_PAYOUT_TRANSACTION (+ link to FKT_VERTRIEBSPROVISIONSEREIGNIS)','Gold','gold.fct_commission_payout','m_fact_upsert on (auszahlung_id,provisionsereignis_key)','Reject if linked provisionsereignis_key missing','CTL_DQ_RESULT'],
+    ['FKT_PROVISIONSANPASSUNG','DWH_CORE','CORE_ADJUSTMENT_TRANSACTION (+ CORE_REASON)','Gold','gold.fct_commission_adjustment','m_fact_upsert on (anpassung_id)','Reject if FX missing or fact link unresolved','CTL_DQ_RESULT'],
+    ['DIM_VERMITTLER','DWH_CORE','CORE_PARTY_ROLE + CORE_PARTY','Gold','gold.dim_agent','m_scd2_merge (BK: role_identifier fallback source_party_id)','SCD overlap/gap checks','CTL_DQ_RESULT'],
+    ['DIM_POLICE','DWH_CORE','CORE_POLICY','Gold','gold.dim_policy','m_scd2_merge (BK: policy_number)','SCD validity check before merge','CTL_DQ_RESULT'],
+    ['BR_POLICE_VERMITTLER_AUFTEILUNG','DWH_CORE/DM','CORE_POLICY_AGENT_ASSIGNMENT + DM dims','Gold','gold.bridge_policy_agent_split','full delete + reload (v1), incremental in v2','Validate normalized split % and active date','CTL_RECON_RESULT'],
+    ['FX Service Layer','DWH_CORE','CORE_FX_RATE','Silver','silver.fx_rates','exact rate + fallback (latest prior <=5 days)','Flag gaps for non-reporting currency','CTL_DQ_RESULT'],
+    ['Quality & Reconciliation','CTL_INS','CTL_DQ_RESULT + CTL_RECON_RESULT + CTL_BATCH_STEP','Platform','platform.control_tower','step-level logging + threshold checks','Alert on KPI variance above tolerance','CTL_ALERT'],
+    ['Orchestration','sas/','run_dm_sales_provisioning.sas (13 scripts)','Platform','platform.dag_sales_provisioning','deterministic DAG mirroring run order 01..13','Fail-fast on blocking DQ/recon','CTL_BATCH_RUN + CTL_WATERMARK'],
   ];
 
   const body = `
-    <div class="grid md:grid-cols-5 gap-3">
-      <div class="md:col-span-3 rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
-        <div class="px-3 py-2 text-xs text-slate-400 border-b border-slate-800">Mapping Matrix (click row to highlight target layer)</div>
-        <div class="overflow-auto">
+    <div class="space-y-3">
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Source: 05_lineage_matrix.md</span>
+          <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Source: 04_etl_logic_core_to_dm.md</span>
+          <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Source: 03_entity_model_reference.md</span>
+          <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Source: 06_data_quality_reconciliation_and_controls.md</span>
+        </div>
+        <div class="mt-2 text-xs text-slate-400">Best Practice: Erst das <span class="text-slate-200">grosse Datenmodell/Lineage-Bild</span> verstehen, danach Mapping-Matrix und Delivery-Reihenfolge ableiten.</div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
+        <div class="px-3 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="text-sm font-semibold">Grosses Data Model & Fact Lineage (Phase-4 Kernvisualisierung)</div>
+            <div class="text-xs text-slate-400">Scrollen + Zoom nutzen, um Joins, Facts und Abhängigkeiten klar zu sehen.</div>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <button id="p4ZoomOut" class="px-2 py-1 rounded-lg border border-slate-700 hover:border-emerald-400">− Zoom</button>
+            <button id="p4ZoomReset" class="px-2 py-1 rounded-lg border border-slate-700 hover:border-emerald-400">Reset</button>
+            <button id="p4ZoomIn" class="px-2 py-1 rounded-lg border border-slate-700 hover:border-emerald-400">+ Zoom</button>
+            <span id="p4ZoomLabel" class="px-2 py-1 rounded-lg border border-slate-700 bg-base-900 text-slate-300">100%</span>
+          </div>
+        </div>
+        <div id="p4DiagramScroll" class="overflow-auto" style="height: 420px;">
+          <div id="p4DiagramWrap" class="p-4" style="width: max-content; min-width: 100%; transform-origin: top left;">
+            <div class="mermaid">${MM.coreEr}</div>
+            <div class="mt-4 rounded-xl border border-slate-800 bg-base-900 p-3">
+              <div class="text-xs text-slate-400 mb-2">Why this visual in Phase 4?</div>
+              <ul class="list-disc ml-5 text-xs text-slate-300 space-y-1">
+                <li>Zeigt sofort, welche CORE-Entitäten auf Gold-Facts und Dims einzahlen.</li>
+                <li>Macht Natural-Key-Strategien für Upserts nachvollziehbar.</li>
+                <li>Erklärt, wo DQ/Reconciliation-Hooks fachlich angebunden werden.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
+        <div class="px-3 py-2 text-xs text-slate-400 border-b border-slate-800">Implementation Mapping Matrix (anklicken = Layer Highlight)</div>
+        <div class="overflow-auto max-h-[330px]">
           <table class="w-full text-xs" id="mapTbl">
-            <thead class="bg-base-900/60">
+            <thead class="bg-base-900/60 sticky top-0">
               <tr class="text-slate-400">
-                ${['KPI/Asset','IST Layer','IST Artifact','Target Layer','Target Object','Refactoring Hint'].map(h=>`<th class="text-left px-3 py-2 whitespace-nowrap">${h}</th>`).join('')}
+                ${['Objekt','IST Layer','Primäre Quelle','Target Layer','Target Object','Load/Key Strategie','Rejection / Guardrail','Control Hook'].map(h=>`<th class="text-left px-3 py-2 whitespace-nowrap">${h}</th>`).join('')}
               </tr>
             </thead>
             <tbody>
               ${rows.map(r=>`
-                <tr data-layer="${r[3]}" class="border-t border-slate-800 hover:bg-base-900/50 cursor-pointer transition">
-                  ${r.map((c,i)=>`<td class="px-3 py-2 ${i===0?'font-medium text-slate-200':''} whitespace-nowrap">${c}</td>`).join('')}
+                <tr data-layer="${r[3]}" class="border-t border-slate-800 hover:bg-base-900/50 cursor-pointer transition align-top">
+                  ${r.map((c,i)=>`<td class="px-3 py-2 ${i===0?'font-medium text-slate-200':''}">${c}</td>`).join('')}
                 </tr>
               `).join('')}
             </tbody>
@@ -1213,44 +1267,44 @@ function canvasPhase4(){
         </div>
       </div>
 
-      <div class="md:col-span-2 space-y-3">
-        ${medallionCard('Bronze','Raw landing / ingestion','Typically file + schema')}
-        ${arrowUp()}
-        ${medallionCard('Silver','Curated / quality-checked','Standardized entities, DQ results')}
-        ${arrowUp()}
-        ${medallionCard('Gold','Serving / KPI-ready','Facts, dims, bridges for BI')}
+      <div class="grid md:grid-cols-4 gap-3">
+        ${medallionCard('Bronze','Raw landing (scope reminder)','STG/WRK liegen im Repo nur als DDL vor; ETL nicht sichtbar.','Out-of-scope in diesem Sprint')}
+        ${medallionCard('Silver','Curated services','FX fallback service, quality results, standardized controls.','Bridge zwischen CORE und Gold KPIs')}
+        ${medallionCard('Gold','KPI-serving mart','Dimensions, bridges, facts für Provisioning & Reporting.','Phase-5 ready for Alt/Neu baseline tests')}
+        ${medallionCard('Platform','Orchestration & Control','DAG + Run Logs + Watermark + Alerts als Delivery-Sicherheitsnetz.','Betriebsfähigkeit ab Day-1')}
       </div>
     </div>
   `;
 
   return canvasShell({
-    title: 'Mapping IST → Target (Medallion)',
-    subtitle: 'Zeile klicken → Layer rechts highlighten (Gold/Silver/Bronze).',
-    legendBadges: ['Clickable mapping', 'Target layers'],
+    title: 'Phase 4 Blueprint: IST Deliverables → Target Build Plan',
+    subtitle: 'Grosses, lesbares Datenmodell + Mapping-Matrix + Deliverable-Talking-Points.',
+    legendBadges: ['Doc-driven mapping', 'Large visual', 'Control hooks included'],
     bodyHtml: body,
-    footerHtml: 'Phase 4 • Mapping turns analysis into a build plan'
+    footerHtml: 'Phase 4 • Analyse wird zu umsetzbarem Architektur- und Delivery-Plan',
+    fillHeight: true
   });
 
-  function medallionCard(layer, desc, hint){
+  function medallionCard(layer, desc, hint, kicker){
     const id = `layer-${layer}`;
     const accent = layer === 'Gold'
       ? 'border-emerald-500/35'
       : layer === 'Silver'
-        ? 'border-slate-700'
-        : 'border-slate-700';
+        ? 'border-sky-500/30'
+        : layer === 'Platform'
+          ? 'border-violet-500/35'
+          : 'border-slate-700';
 
     return `
       <div id="${id}" class="rounded-2xl border ${accent} bg-base-850 p-4 transition">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2">
           <div class="font-semibold">${layer}</div>
           <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">${desc}</span>
         </div>
-        <div class="mt-2 text-sm text-slate-400">${hint}</div>
+        <div class="mt-2 text-sm text-slate-300">${hint}</div>
+        <div class="mt-2 text-xs text-slate-400">${kicker}</div>
       </div>
     `;
-  }
-  function arrowUp(){
-    return `<div class="text-center text-emerald-300/60 text-sm select-none">↑</div>`;
   }
 }
 
@@ -1764,6 +1818,21 @@ function wireInteractions(route){
       `;
     });
   });
+
+  // Phase 4 diagram zoom controls
+  const p4Wrap = document.getElementById('p4DiagramWrap');
+  const p4Label = document.getElementById('p4ZoomLabel');
+  if(p4Wrap && p4Label){
+    let scale = 1;
+    const paint = ()=>{
+      p4Wrap.style.transform = `scale(${scale})`;
+      p4Label.textContent = `${Math.round(scale*100)}%`;
+    };
+    document.getElementById('p4ZoomIn')?.addEventListener('click', ()=>{ scale = Math.min(2.2, +(scale + 0.15).toFixed(2)); paint(); });
+    document.getElementById('p4ZoomOut')?.addEventListener('click', ()=>{ scale = Math.max(0.55, +(scale - 0.15).toFixed(2)); paint(); });
+    document.getElementById('p4ZoomReset')?.addEventListener('click', ()=>{ scale = 1; paint(); });
+    paint();
+  }
 
   // Phase 4 highlight mapping
   const map = document.getElementById('mapTbl');
