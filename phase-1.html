@@ -801,10 +801,10 @@ function renderDeepDive(route){
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', sectionClass = 'col-span-12 lg:col-span-8', viewportClass = 'aspect-video' }){
   return `
-    <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+    <section class="${sectionClass} rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
+      <div class="${viewportClass} canvas-grid relative" data-canvas-viewport>
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -947,40 +947,94 @@ function canvasPhase0(){
 
 function canvasPhase1(){
   const rows = [
-    ['sas/run_dm_sales_provisioning.sas','Orchestrator','CORE→DM','Vertrieb','High','Unassigned','Discovered'],
-    ['sas/mapping/11_fact_vertriebsprovisionsereignis.sas','Mapping','DM','Vertrieb','High','Unassigned','Discovered'],
-    ['sas/macros/m_fact_upsert.sas','Macro','Shared','Plattform','Medium','Unassigned','Discovered'],
-    ['ddl/40_dm_sales_provisioning_layer.sql','DDL','DM','Vertrieb','Low','Unassigned','Discovered'],
-    ['quality/02_reconciliation_core_vs_dm.sas','Quality','CTL','Plattform','Medium','Unassigned','Discovered'],
-    ['documentation/diagrams/01_architecture_layers.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],
-    ['documentation/diagrams/02_orchestration_sequence.mmd','Diagram','Docs','Plattform','Low','Lukas','Generated'],
-    ['STG_INS.*','Schema','STG','Plattform','?','?','DDL only']
+    ['documentation/01_platform_inventory.md', 'Assessment Doc', 'Documentation', 'All Domains', 'High', 'Architecture Lead', 'Validated'],
+    ['documentation/02_architecture_and_data_flow.md', 'Assessment Doc', 'Documentation', 'Platform', 'High', 'Data Architect', 'Validated'],
+    ['documentation/diagrams/01_architecture_layers.mmd', 'Diagram', 'Cross-Layer', 'Platform', 'Medium', 'Data Architect', 'Validated'],
+    ['documentation/diagrams/02_orchestration_sequence.mmd', 'Diagram', 'Orchestration', 'Platform', 'Medium', 'Data Engineer', 'Validated'],
+    ['sas/run_dm_sales_provisioning.sas', 'Batch Orchestrator', 'ETL Runtime', 'Provisioning', 'High', 'ETL Owner', 'Validated'],
+    ['sas/mapping/11_fact_vertriebsprovisionsereignis.sas', 'Mapping Logic', 'DM_VERSICHERUNG', 'Sales', 'High', 'Business IT', 'In Scope'],
+    ['sas/mapping/12_fact_provisionsauszahlung.sas', 'Mapping Logic', 'DM_VERSICHERUNG', 'Sales', 'High', 'Business IT', 'In Scope'],
+    ['sas/mapping/13_fact_provisionsanpassung.sas', 'Mapping Logic', 'DM_VERSICHERUNG', 'Sales', 'High', 'Business IT', 'In Scope'],
+    ['sas/quality/01_dq_core_to_dm.sas', 'Quality Control', 'CTL_INS', 'Platform', 'Medium', 'Data Quality Lead', 'In Scope'],
+    ['sas/quality/02_reconciliation_core_vs_dm.sas', 'Reconciliation', 'CTL_INS', 'Finance', 'Medium', 'Controlling', 'In Scope'],
+    ['ddl/40_dm_sales_provisioning_layer.sql', 'DDL', 'DM_VERSICHERUNG', 'Sales', 'Medium', 'DBA', 'Validated'],
+    ['ddl/30_dwh_core_layer.sql', 'DDL', 'DWH_CORE', 'Enterprise', 'Medium', 'DBA', 'Validated']
   ];
 
+  const controls = `
+    <div class="inline-flex items-center gap-1 rounded-xl border border-slate-700 bg-base-900 p-1">
+      <button id="phase1ZoomOut" class="px-2 py-1 text-xs rounded-md border border-slate-700 hover:border-emerald-400 transition">−</button>
+      <button id="phase1ZoomReset" class="px-2 py-1 text-xs rounded-md border border-slate-700 hover:border-emerald-400 transition">215%</button>
+      <button id="phase1ZoomIn" class="px-2 py-1 text-xs rounded-md border border-slate-700 hover:border-emerald-400 transition">+</button>
+    </div>
+  `;
+
   const body = `
-    <div class="flex flex-wrap gap-2">
-      <div class="flex-1 min-w-[220px]">
-        <input id="invSearch" placeholder="Search artifacts…" class="w-full px-3 py-2 rounded-xl bg-base-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
+    <div class="grid gap-3 lg:grid-cols-3">
+      ${miniKpi('Dokumentierte Plattform-Tabellen', '64', 'Quelle: 01_platform_inventory.md')}
+      ${miniKpi('SAS Mapping Steps', '13', 'Quelle: 02_architecture_and_data_flow.md')}
+      ${miniKpi('Kritische Fakten im Scope', '3', 'Accrual / Payout / Adjustment')}
+    </div>
+
+    <div class="mt-3 rounded-2xl border border-slate-800 bg-base-850 p-3">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <div>
+          <div class="text-xs uppercase tracking-wide text-slate-400">Phase-1 Deliverable</div>
+          <div class="font-semibold">Data-Gathering Explorer: Scope, Priorisierung, Risiko</div>
+        </div>
+        <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-[10px]">Auditierbar</span>
       </div>
-      ${filterSelect('Layer')}
-      ${filterSelect('Type')}
-      ${filterSelect('Domain')}
-      <button id="exportCsv"
-        class="ml-auto px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/35 hover:bg-emerald-500/20 transition text-sm">
-        Export CSV
-      </button>
+
+      <div id="phase1ArchWrap" class="rounded-xl border border-slate-800 bg-base-900 overflow-auto h-[74vh]">
+        <div id="phase1ArchZoom" class="w-[1600px] h-[760px] origin-top-left transition" style="transform: scale(1.15)">
+          <svg viewBox="0 0 1600 760" class="w-full h-full">
+            <defs>
+              <marker id="arrP1" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L7,3 z" fill="#10b981"></path>
+              </marker>
+              <filter id="shadowP1"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity=".35"/></filter>
+            </defs>
+
+            <line x1="300" y1="170" x2="560" y2="170" stroke="#10b981" stroke-width="3" marker-end="url(#arrP1)" />
+            <line x1="820" y1="170" x2="1080" y2="170" stroke="#10b981" stroke-width="3" marker-end="url(#arrP1)" />
+            <line x1="1340" y1="170" x2="1470" y2="170" stroke="#10b981" stroke-width="3" marker-end="url(#arrP1)" />
+            <line x1="560" y1="220" x2="560" y2="320" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arrP1)" />
+            <line x1="1080" y1="220" x2="1080" y2="320" stroke="#fbbf24" stroke-width="2.5" marker-end="url(#arrP1)" />
+
+            ${phase1Node('p1n1',60,120,'Source Discovery','SAS, DDL, Scheduler, Docs inventarisieren','Stage')}
+            ${phase1Node('p1n2',560,120,'Classification','Layer + Domain + Owner + Kritikalität','Assessment')}
+            ${phase1Node('p1n3',1080,120,'Scope Cut','Pilot-Use-Cases + klare Phase-Gates','Decision')}
+            ${phase1Node('p1n4',460,330,'Deliverables','Inventar, Layer-Map, Scope-Dokument','Output')}
+            ${phase1Node('p1n5',980,330,'Risk & Gap Log','STG/WRK Visibility, Ownership Gaps','Control')}
+          </svg>
+        </div>
+      </div>
+      <div class="mt-2 text-xs text-slate-400">
+        Fokusansicht mit Zoom/Scroll (inkl. Ctrl+Mausrad) – die Kernschritte der Phase 1 sind groß visualisiert und klickbar mit Evidence-Notizen.
+      </div>
+      <div id="phase1NodeDrawer" class="mt-3 border border-slate-800 rounded-2xl bg-base-900 p-3 text-xs shadow-soft hidden"></div>
     </div>
 
-    <div class="grid md:grid-cols-3 gap-2 mt-3">
-      ${miniKpi('DB2 Tables (total)', '64')}
-      ${miniKpi('SAS Mapping Scripts', '13')}
-      ${miniKpi('Quality Checks', '2')}
-    </div>
+    <div class="mt-3 grid gap-3 md:grid-cols-2">
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="text-xs uppercase tracking-wide text-slate-400">Gate Criteria</div>
+        <ul class="mt-2 space-y-1.5 text-sm text-slate-200/90">
+          <li class="flex gap-2"><span class="text-emerald-300">✓</span> Vollständige Quellenübersicht nach Layer</li>
+          <li class="flex gap-2"><span class="text-emerald-300">✓</span> Priorisierte PoC-Use-Cases inklusive Owner</li>
+          <li class="flex gap-2"><span class="text-emerald-300">✓</span> Erfolgskriterien + Messpunkte definiert</li>
+          <li class="flex gap-2"><span class="text-emerald-300">✓</span> Abhängigkeiten und Risiken dokumentiert</li>
+        </ul>
+      </div>
 
-    <div class="mt-3 flex items-center justify-end">
-      <span class="text-[10px] px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
-        Agent: Data Gathering / Classification • Run ID: DEMO-001
-      </span>
+      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="text-xs uppercase tracking-wide text-slate-400">Scope Focus</div>
+        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+          <span class="px-2 py-1 rounded-full border border-emerald-500/35 bg-emerald-500/10">DM_VERSICHERUNG Facts</span>
+          <span class="px-2 py-1 rounded-full border border-emerald-500/35 bg-emerald-500/10">DQ + Reconciliation</span>
+          <span class="px-2 py-1 rounded-full border border-slate-700 bg-base-900">STG/WRK Visibility Gap</span>
+        </div>
+        <p class="mt-2 text-xs text-slate-400">Abgeleitet aus den Deliverables in <code>documentation/01_platform_inventory.md</code> und <code>documentation/02_architecture_and_data_flow.md</code>.</p>
+      </div>
     </div>
 
     <div class="mt-3 rounded-2xl border border-slate-800 bg-base-850 overflow-hidden">
@@ -988,7 +1042,7 @@ function canvasPhase1(){
         <table id="inventoryTbl" class="w-full text-xs">
           <thead class="bg-base-900/60">
             <tr class="text-slate-400">
-              ${['Artifact','Type','Layer','Domain','Complexity','Owner','Status'].map(h=>`<th class="text-left px-3 py-2 whitespace-nowrap">${h}</th>`).join('')}
+              ${['Artefakt','Typ','Layer','Domain','Criticality','Owner','Status'].map(h=>`<th class="text-left px-3 py-2 whitespace-nowrap">${h}</th>`).join('')}
             </tr>
           </thead>
           <tbody id="invBody">
@@ -1000,54 +1054,61 @@ function canvasPhase1(){
   `;
 
   return canvasShell({
-    title: 'Artefakt-Inventar (Agent View)',
-    subtitle: 'AI-gestützte Übersicht über Code, DDL, Quality & Docs.',
-    legendBadges: ['Demo data only', 'Exportable inventory'],
+    title: 'Phase 1 Dashboard – Data Gathering & Scope',
+    subtitle: 'Professionelle Entscheidungsseite auf Basis der Analyse-Dokumente und Diagramme.',
+    legendBadges: ['Documentation-backed', 'Phase Gate Ready', 'Scope Decision'],
+    controlsHtml: controls,
     bodyHtml: body,
-    footerHtml: 'Phase 1 • Inventory + classification = scope safety'
+    footerHtml: 'Phase 1 • Transparenz schaffen, Scope sichern, Risiken früh adressieren',
+    sectionClass: 'col-span-12',
+    viewportClass: 'min-h-[78vh]'
   });
 
-  function filterSelect(label){
+
+
+  function phase1Node(id,x,y,title,sub,type){
+    const c = { Stage:'#22c55e', Assessment:'#10b981', Decision:'#f59e0b', Output:'#38bdf8', Control:'#f43f5e' }[type] || '#94a3b8';
     return `
-      <select class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
-        <option>${label}</option>
-      </select>
+      <g class="phase1-node cursor-pointer" data-node="${id}" data-title="${title}" data-type="${type}" transform="translate(${x},${y})" filter="url(#shadowP1)">
+        <rect width="280" height="96" rx="14" fill="#0b1114" stroke="${c}" stroke-opacity=".75"></rect>
+        <text x="14" y="30" fill="#e2e8f0" font-size="20" font-weight="700">${title}</text>
+        <text x="14" y="56" fill="#94a3b8" font-size="15">${sub}</text>
+        <text x="14" y="78" fill="${c}" font-size="13">${type}</text>
+      </g>
     `;
   }
-  function miniKpi(label, value){
+  function miniKpi(label, value, note){
     return `
       <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
         <div class="text-xs text-slate-400">${label}</div>
         <div class="mt-1 text-lg font-semibold">${value}</div>
+        <div class="text-[10px] text-slate-500 mt-1">${note}</div>
       </div>
     `;
   }
-  function badge(text, kind){
+
+  function badge(text){
     const map = {
       High: 'bg-red-500/15 border-red-500/30 text-red-200',
       Medium: 'bg-amber-500/15 border-amber-500/30 text-amber-200',
       Low: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200',
-      Discovered: 'bg-slate-800/40 border-slate-700 text-slate-200',
-      Generated: 'bg-emerald-500/12 border-emerald-500/25 text-emerald-200',
-      'DDL only': 'bg-slate-800/40 border-slate-700 text-slate-200',
-      '?': 'bg-slate-800/40 border-slate-700 text-slate-200',
+      'In Scope': 'bg-emerald-500/12 border-emerald-500/25 text-emerald-200',
+      Validated: 'bg-slate-800/40 border-slate-700 text-slate-200',
     };
     const cls = map[text] || 'bg-slate-800/40 border-slate-700 text-slate-200';
     return `<span class="px-2 py-0.5 rounded-full border ${cls} text-[10px] whitespace-nowrap">${text}</span>`;
   }
+
   function inventoryRow(r){
     return `
       <tr class="border-t border-slate-800 hover:bg-base-900/50 transition">
-        <td class="px-3 py-2 min-w-[320px]">
-          <div class="font-medium text-slate-200">${r[0]}</div>
-          <div class="text-[10px] text-slate-400">evidence: file/path</div>
-        </td>
+        <td class="px-3 py-2 min-w-[320px]"><div class="font-medium text-slate-200">${r[0]}</div></td>
         <td class="px-3 py-2 whitespace-nowrap">${r[1]}</td>
         <td class="px-3 py-2 whitespace-nowrap">${r[2]}</td>
         <td class="px-3 py-2 whitespace-nowrap">${r[3]}</td>
-        <td class="px-3 py-2">${badge(r[4], 'complexity')}</td>
+        <td class="px-3 py-2">${badge(r[4])}</td>
         <td class="px-3 py-2 whitespace-nowrap text-slate-300">${r[5]}</td>
-        <td class="px-3 py-2">${badge(r[6], 'status')}</td>
+        <td class="px-3 py-2">${badge(r[6])}</td>
       </tr>
     `;
   }
@@ -1683,7 +1744,7 @@ function wireInteractions(route){
   // Fullscreen button for canvas
   document.querySelectorAll('[data-action="fullscreen"]').forEach(btn => {
     btn.onclick = () => {
-      const canvas = btn.closest('section')?.querySelector('.aspect-video');
+      const canvas = btn.closest('section')?.querySelector('[data-canvas-viewport]');
       if(!canvas) return;
       if(document.fullscreenElement) document.exitFullscreen();
       else canvas.requestFullscreen?.();
@@ -1719,11 +1780,66 @@ function wireInteractions(route){
     }
   }
 
+  // Phase 1 diagram zoom controls + node evidence
+  const zIn = document.getElementById('phase1ZoomIn');
+  const zOut = document.getElementById('phase1ZoomOut');
+  const zReset = document.getElementById('phase1ZoomReset');
+  const zTarget = document.getElementById('phase1ArchZoom');
+  const zWrap = document.getElementById('phase1ArchWrap');
+  const p1Drawer = document.getElementById('phase1NodeDrawer');
+  if(zIn && zOut && zReset && zTarget && zWrap){
+    let zoom = 1.15;
+    const applyZoom = ()=>{
+      zTarget.style.transform = `scale(${zoom})`;
+      zReset.textContent = `${Math.round(zoom*100)}%`;
+    };
+    const setZoom = (next)=>{ zoom = Math.min(2.4, Math.max(0.7, +next.toFixed(2))); applyZoom(); };
+    zIn.onclick = ()=> setZoom(zoom + 0.1);
+    zOut.onclick = ()=> setZoom(zoom - 0.1);
+    zReset.onclick = ()=> setZoom(1.15);
+    zWrap.addEventListener('wheel', (e)=>{
+      if(!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom(zoom + (e.deltaY < 0 ? 0.05 : -0.05));
+    }, { passive:false });
+    applyZoom();
+    requestAnimationFrame(() => {
+      zWrap.scrollLeft = 120;
+      zWrap.scrollTop = 10;
+    });
+  }
+
+  const phase1Evidence = {
+    p1n1: { file:'documentation/01_platform_inventory.md', bullets:['64 Tabellen im Inventar dokumentiert.', 'Quellen: SAS, DDL, Steuerung, Dokumentation.'] },
+    p1n2: { file:'documentation/02_architecture_and_data_flow.md', bullets:['Layer-Verantwortung STG/WRK/CORE/DM/CTL abgeleitet.', 'Klassifikation verbindet Technik und Fachdomäne.'] },
+    p1n3: { file:'documentation/02_architecture_and_data_flow.md', bullets:['Scope fokussiert auf 3 Kern-Fakten im DM.', 'Gate-Entscheid mit priorisierten Use-Cases und KPIs.'] },
+    p1n4: { file:'documentation/README.md', bullets:['Deliverables: Inventar, Diagramme, Architektur-Referenzen.', 'Output ist direkt für Stakeholder-Präsentation nutzbar.'] },
+    p1n5: { file:'documentation/07_risks_and_recommendations.md', bullets:['Visibility Gaps und Ownership-Risiken transparent.', 'Frühe Gegenmaßnahmen und Monitoring empfohlen.'] }
+  };
+
+  document.querySelectorAll('.phase1-node').forEach(n => {
+    n.addEventListener('click', () => {
+      if(!p1Drawer) return;
+      const ev = phase1Evidence[n.dataset.node] || { file:'documentation/README.md', bullets:['Weitere Evidence im documentation-Verzeichnis verfügbar.'] };
+      p1Drawer.classList.remove('hidden');
+      p1Drawer.innerHTML = `
+        <div class="font-semibold">${n.dataset.title}</div>
+        <div class="text-emerald-300 text-[10px] mb-2">${n.dataset.type}</div>
+        <div class="rounded-xl border border-slate-800 bg-base-850 p-2">
+          <div class="text-[10px] text-slate-400 mb-1">Evidence (${ev.file})</div>
+          <ul class="list-disc ml-4 text-slate-200/90">
+            ${ev.bullets.map(b=>`<li>${b}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    });
+  });
+
   // Tabs
   document.querySelectorAll('.tabBtn').forEach(btn => {
     btn.onclick = () => {
       const tab = btn.dataset.tab;
-      const root = btn.closest('.aspect-video') || document;
+      const root = btn.closest('[data-canvas-viewport]') || document;
       root.querySelectorAll('.tabPane').forEach(p => p.classList.add('hidden'));
       const pane = root.querySelector(`#tab-${tab}`);
       if(pane) pane.classList.remove('hidden');
