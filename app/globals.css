@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+body {
+  background: #0B1220;
+  color: #E8EEF9;
+}
+
+.section-title {
+  @apply text-xs uppercase tracking-[0.14em] text-muted font-semibold;
+}
