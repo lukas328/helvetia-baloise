@@ -1,0 +1,33 @@
+sequenceDiagram
+  autonumber
+  participant SCH as Scheduler
+  participant SAS as run_dm_sales_provisioning.sas
+  participant CTL as CTL_INS
+  participant CORE as DWH_CORE
+  participant DM as DM_VERSICHERUNG
+
+  SCH->>SAS: Trigger batch
+  SAS->>CTL: Insert CTL_BATCH_RUN (RUNNING)
+  SAS->>CTL: Log RUN_START
+
+  loop Mapping Steps 01..13
+    SAS->>CORE: Read source entities/events
+    SAS->>DM: Upsert dimensions/bridges/facts
+    SAS->>CTL: Log step metrics
+  end
+
+  SAS->>DM: Execute DQ checks (quality/01)
+  SAS->>CTL: Insert CTL_DQ_RESULT
+
+  SAS->>DM: Execute reconciliation (quality/02)
+  SAS->>CTL: Insert CTL_RECON_RESULT
+
+  alt No blocking errors
+    SAS->>CTL: Update CTL_BATCH_RUN to SUCCEEDED
+    SAS->>CTL: Upsert CTL_WATERMARK for 3 core txn entities
+    SAS->>CTL: Log RUN_END (SUCCEEDED)
+  else Blocking DQ/Recon error
+    SAS->>CTL: Update CTL_BATCH_RUN to FAILED
+    SAS->>CTL: Log RUN_END (FAILED)
+    SAS-->>SCH: Abort/CANCEL
+  end

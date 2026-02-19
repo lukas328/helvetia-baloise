@@ -1,0 +1,142 @@
+erDiagram
+  DIM_DATUM {
+    int datum_key PK
+    date datum
+    int jahr
+    int monat
+  }
+
+  DIM_WAEHRUNG {
+    char waehrung_key PK
+    varchar waehrung_name
+  }
+
+  DIM_POLICE {
+    bigint police_key PK
+    varchar policenummer
+    date gueltig_von
+    date gueltig_bis
+  }
+
+  DIM_PRODUKT {
+    bigint produkt_key PK
+    varchar produkt_code
+    date gueltig_von
+    date gueltig_bis
+  }
+
+  DIM_VERMITTLER {
+    bigint vermittler_key PK
+    varchar vermittler_nummer
+    date gueltig_von
+    date gueltig_bis
+  }
+
+  DIM_VERTRIEBSKANAL {
+    int vertriebskanal_key PK
+    varchar kanal_code
+  }
+
+  DIM_ORGANISATIONSEINHEIT {
+    int organisationseinheit_key PK
+    varchar oe_code
+  }
+
+  DIM_PROVISIONSPLAN {
+    bigint provisionsplan_key PK
+    varchar plan_code
+    date gueltig_von
+    date gueltig_bis
+  }
+
+  DIM_PROVISIONSREGEL {
+    bigint provisionsregel_key PK
+    varchar regel_code
+    date gueltig_von
+    date gueltig_bis
+  }
+
+  DIM_GRUND {
+    int grund_key PK
+    varchar grund_code
+  }
+
+  FKT_VERTRIEBSPROVISIONSEREIGNIS {
+    bigint provisionsereignis_key PK
+    bigint police_key FK
+    bigint produkt_key FK
+    bigint vermittler_key FK
+    int vertriebskanal_key FK
+    bigint provisionsplan_key FK
+    bigint provisionsregel_key FK
+    int organisationseinheit_key FK
+    char waehrung_key FK
+    int abgrenzungsdatum_key FK
+    int buchungsdatum_key FK
+    varchar praemientransaktion_id
+    varchar quell_system_id
+    char abrechnungsperiode
+  }
+
+  FKT_PROVISIONSAUSZAHLUNG {
+    bigint auszahlung_key PK
+    bigint provisionsereignis_key FK
+    bigint vermittler_key FK
+    int auszahlungsdatum_key FK
+    char waehrung_key FK
+    int organisationseinheit_key FK
+    varchar auszahlung_id
+  }
+
+  FKT_PROVISIONSANPASSUNG {
+    bigint anpassung_key PK
+    bigint provisionsereignis_key FK
+    bigint vermittler_key FK
+    int anpassungsdatum_key FK
+    int grund_key FK
+    char waehrung_key FK
+    varchar anpassung_id
+  }
+
+  BR_POLICE_VERMITTLER_AUFTEILUNG {
+    bigint police_key FK
+    bigint vermittler_key FK
+    date gueltig_von
+    decimal aufteilungsquote_prozent
+  }
+
+  BR_VERMITTLER_HIERARCHIE {
+    bigint unterstellter_vermittler_key FK
+    bigint vorgesetzter_vermittler_key FK
+    date gueltig_von
+    int ebene
+  }
+
+  DIM_POLICE ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : policy
+  DIM_PRODUKT ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : product
+  DIM_VERMITTLER ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : agent
+  DIM_VERTRIEBSKANAL ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : channel
+  DIM_PROVISIONSPLAN ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : plan
+  DIM_PROVISIONSREGEL ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : rule
+  DIM_ORGANISATIONSEINHEIT ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : org
+  DIM_WAEHRUNG ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : currency
+  DIM_DATUM ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : accrual_date
+  DIM_DATUM ||--o{ FKT_VERTRIEBSPROVISIONSEREIGNIS : booking_date
+
+  FKT_VERTRIEBSPROVISIONSEREIGNIS ||--o{ FKT_PROVISIONSAUSZAHLUNG : payout_of
+  FKT_VERTRIEBSPROVISIONSEREIGNIS ||--o{ FKT_PROVISIONSANPASSUNG : adjustment_of
+
+  DIM_VERMITTLER ||--o{ FKT_PROVISIONSAUSZAHLUNG : payout_agent
+  DIM_DATUM ||--o{ FKT_PROVISIONSAUSZAHLUNG : payout_date
+  DIM_WAEHRUNG ||--o{ FKT_PROVISIONSAUSZAHLUNG : payout_currency
+  DIM_ORGANISATIONSEINHEIT ||--o{ FKT_PROVISIONSAUSZAHLUNG : payout_org
+
+  DIM_VERMITTLER ||--o{ FKT_PROVISIONSANPASSUNG : adjusted_agent
+  DIM_DATUM ||--o{ FKT_PROVISIONSANPASSUNG : adjustment_date
+  DIM_GRUND ||--o{ FKT_PROVISIONSANPASSUNG : reason
+  DIM_WAEHRUNG ||--o{ FKT_PROVISIONSANPASSUNG : adjustment_currency
+
+  DIM_POLICE ||--o{ BR_POLICE_VERMITTLER_AUFTEILUNG : split_policy
+  DIM_VERMITTLER ||--o{ BR_POLICE_VERMITTLER_AUFTEILUNG : split_agent
+  DIM_VERMITTLER ||--o{ BR_VERMITTLER_HIERARCHIE : child
+  DIM_VERMITTLER ||--o{ BR_VERMITTLER_HIERARCHIE : parent

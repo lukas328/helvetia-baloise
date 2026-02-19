@@ -1,0 +1,26 @@
+flowchart TD
+  A[Batch Trigger] --> B[CTL_BATCH_RUN insert RUNNING]
+  B --> C[Mapping Steps 01..13]
+  C --> D[CTL_BATCH_STEP logs]
+
+  C --> E[DQ Assertions]
+  E --> F[CTL_DQ_RESULT inserts]
+
+  F --> G[Reconciliation Metrics]
+  G --> H[CTL_RECON_RESULT inserts]
+
+  H --> I{g_has_error > 0?}
+  I -- No --> J[Set run status SUCCEEDED]
+  I -- Yes --> K[Set run status FAILED]
+
+  J --> L[Update CTL_BATCH_RUN end_ts + status]
+  K --> L
+
+  L --> M{Status SUCCEEDED?}
+  M -- Yes --> N[Upsert CTL_WATERMARK for CORE transaction entities]
+  M -- No --> O[Abort batch]
+
+  N --> P[Log RUN_END in CTL_BATCH_STEP]
+  O --> P
+
+  Q[CTL_ALERT table exists] -. currently not populated .-> P

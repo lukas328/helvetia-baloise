@@ -1,0 +1,54 @@
+flowchart LR
+  subgraph SRC[Operational Source Systems]
+    S1[Policy Admin]
+    S2[Commission Engine]
+    S3[Partner/Agent Master]
+    S4[Reference Data / FX]
+  end
+
+  subgraph STG[STG_INS Raw Landing]
+    STG1[STG_POLICY]
+    STG2[STG_PRODUCT]
+    STG3[STG_PARTY]
+    STG4[STG_*_EVENT]
+  end
+
+  subgraph WRK[WRK_INS Integration]
+    WRK1[WRK_POLICY / WRK_PRODUCT / WRK_PARTY]
+    WRK2[WRK_*_EVENT]
+    WRK3[WRK_REFERENCE]
+    WRK4[WRK_REJECT]
+  end
+
+  subgraph CORE[DWH_CORE Enterprise Canonical]
+    C1[Master + Reference Dimensions]
+    C2[Policy/Agent Relationships]
+    C3[Premium / Provision / Payout / Adjustment Transactions]
+    C4[CORE_FX_RATE]
+    C5[CORE_RECORD_LINEAGE]
+  end
+
+  subgraph DM[DM_VERSICHERUNG Sales Provisioning Mart]
+    D1[Dimensions]
+    D2[Bridges]
+    D3[Fact Accrual]
+    D4[Fact Payout]
+    D5[Fact Adjustment]
+  end
+
+  subgraph CTL[CTL_INS Control and Quality]
+    T1[CTL_BATCH_RUN]
+    T2[CTL_BATCH_STEP]
+    T3[CTL_DQ_RESULT]
+    T4[CTL_RECON_RESULT]
+    T5[CTL_WATERMARK]
+    T6[CTL_ALERT]
+  end
+
+  SRC --> STG --> WRK --> CORE --> DM
+  WRK --> WRK4
+  CORE --> C5
+
+  ETL[SAS Batch Orchestrator]
+  ETL --> DM
+  ETL --> CTL

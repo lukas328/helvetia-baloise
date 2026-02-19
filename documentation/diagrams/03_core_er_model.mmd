@@ -1,0 +1,194 @@
+erDiagram
+  CORE_PARTY {
+    bigint party_key PK
+    varchar source_party_id
+    varchar party_type
+    date valid_from
+    date valid_to
+    char is_current
+  }
+
+  CORE_PARTY_ROLE {
+    bigint party_role_key PK
+    bigint party_key FK
+    varchar role_type_code
+    varchar role_identifier
+    date valid_from
+    date valid_to
+  }
+
+  CORE_PRODUCT {
+    bigint product_key PK
+    varchar source_product_id
+    varchar product_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_POLICY {
+    bigint policy_key PK
+    varchar source_policy_id
+    varchar policy_number
+    bigint policyholder_party_key FK
+    bigint product_key FK
+    date valid_from
+    date valid_to
+  }
+
+  CORE_POLICY_AGENT_ASSIGNMENT {
+    bigint policy_agent_assignment_key PK
+    bigint policy_key FK
+    bigint agent_party_role_key FK
+    bigint supervisor_party_role_key FK
+    bigint org_unit_key FK
+    bigint channel_key FK
+    decimal credit_split_percent
+    date valid_from
+    date valid_to
+  }
+
+  CORE_ORG_UNIT {
+    bigint org_unit_key PK
+    varchar source_org_unit_id
+    varchar org_unit_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_CHANNEL {
+    bigint channel_key PK
+    varchar source_channel_id
+    varchar channel_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_COMMISSION_PLAN {
+    bigint commission_plan_key PK
+    varchar source_plan_id
+    varchar plan_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_COMMISSION_RULE {
+    bigint commission_rule_key PK
+    varchar source_rule_id
+    bigint commission_plan_key FK
+    varchar rule_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_DATE {
+    int date_key PK
+    date calendar_date
+  }
+
+  CORE_CURRENCY {
+    char currency_key PK
+    varchar currency_name
+  }
+
+  CORE_FX_RATE {
+    bigint fx_rate_key PK
+    int rate_date_key FK
+    char from_currency_key FK
+    char to_currency_key FK
+    decimal fx_rate
+  }
+
+  CORE_PREMIUM_TRANSACTION {
+    bigint premium_txn_key PK
+    varchar source_premium_txn_id
+    bigint policy_key FK
+    int booking_date_key FK
+    char currency_key FK
+    decimal gross_amount
+    decimal net_amount
+  }
+
+  CORE_PROVISION_TRANSACTION {
+    bigint provision_txn_key PK
+    varchar source_provision_event_id
+    bigint premium_txn_key FK
+    bigint policy_key FK
+    bigint agent_party_role_key FK
+    bigint commission_plan_key FK
+    bigint commission_rule_key FK
+    bigint org_unit_key FK
+    bigint channel_key FK
+    int event_effective_date_key FK
+    char currency_key FK
+  }
+
+  CORE_PAYOUT_TRANSACTION {
+    bigint payout_txn_key PK
+    varchar source_payout_id
+    bigint provision_txn_key FK
+    bigint agent_party_role_key FK
+    bigint org_unit_key FK
+    int payout_date_key FK
+    char currency_key FK
+  }
+
+  CORE_REASON {
+    bigint reason_key PK
+    varchar source_reason_id
+    varchar reason_code
+    date valid_from
+    date valid_to
+  }
+
+  CORE_ADJUSTMENT_TRANSACTION {
+    bigint adjustment_txn_key PK
+    varchar source_adjustment_id
+    bigint provision_txn_key FK
+    bigint agent_party_role_key FK
+    bigint reason_key FK
+    int adjustment_date_key FK
+    char currency_key FK
+  }
+
+  CORE_PARTY ||--o{ CORE_PARTY_ROLE : has
+  CORE_PARTY ||--o{ CORE_POLICY : policyholder
+  CORE_PRODUCT ||--o{ CORE_POLICY : product
+
+  CORE_POLICY ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : assignment
+  CORE_PARTY_ROLE ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : agent
+  CORE_PARTY_ROLE ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : supervisor
+  CORE_ORG_UNIT ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : in_org
+  CORE_CHANNEL ||--o{ CORE_POLICY_AGENT_ASSIGNMENT : in_channel
+
+  CORE_COMMISSION_PLAN ||--o{ CORE_COMMISSION_RULE : contains
+
+  CORE_POLICY ||--o{ CORE_PREMIUM_TRANSACTION : has
+  CORE_DATE ||--o{ CORE_PREMIUM_TRANSACTION : booking_date
+  CORE_CURRENCY ||--o{ CORE_PREMIUM_TRANSACTION : currency
+
+  CORE_PREMIUM_TRANSACTION ||--o{ CORE_PROVISION_TRANSACTION : derives
+  CORE_POLICY ||--o{ CORE_PROVISION_TRANSACTION : policy
+  CORE_PARTY_ROLE ||--o{ CORE_PROVISION_TRANSACTION : agent
+  CORE_COMMISSION_PLAN ||--o{ CORE_PROVISION_TRANSACTION : plan
+  CORE_COMMISSION_RULE ||--o{ CORE_PROVISION_TRANSACTION : rule
+  CORE_ORG_UNIT ||--o{ CORE_PROVISION_TRANSACTION : org
+  CORE_CHANNEL ||--o{ CORE_PROVISION_TRANSACTION : channel
+  CORE_DATE ||--o{ CORE_PROVISION_TRANSACTION : event_date
+  CORE_CURRENCY ||--o{ CORE_PROVISION_TRANSACTION : currency
+
+  CORE_PROVISION_TRANSACTION ||--o{ CORE_PAYOUT_TRANSACTION : payout
+  CORE_PROVISION_TRANSACTION ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjustment
+
+  CORE_PARTY_ROLE ||--o{ CORE_PAYOUT_TRANSACTION : payee
+  CORE_ORG_UNIT ||--o{ CORE_PAYOUT_TRANSACTION : payout_org
+  CORE_DATE ||--o{ CORE_PAYOUT_TRANSACTION : payout_date
+  CORE_CURRENCY ||--o{ CORE_PAYOUT_TRANSACTION : payout_currency
+
+  CORE_PARTY_ROLE ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjusted_agent
+  CORE_REASON ||--o{ CORE_ADJUSTMENT_TRANSACTION : reason
+  CORE_DATE ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjustment_date
+  CORE_CURRENCY ||--o{ CORE_ADJUSTMENT_TRANSACTION : adjustment_currency
+
+  CORE_DATE ||--o{ CORE_FX_RATE : rate_date
+  CORE_CURRENCY ||--o{ CORE_FX_RATE : from_ccy
+  CORE_CURRENCY ||--o{ CORE_FX_RATE : to_ccy
