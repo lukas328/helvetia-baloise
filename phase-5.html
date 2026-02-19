@@ -552,15 +552,15 @@ const phaseMeta = {
   },
   'phase-5': {
     title: 'Phase 5: Baseline Validation',
-    subtitle: 'Alt/Neu Vergleich + Decision Log → Vertrauen herstellen.',
+    subtitle: 'Control-gesteuerter Alt/Neu Nachweis mit Golden Dataset & Evidence Trail.',
     facts: {
-      Ziel: 'Vertrauen in Ergebnisqualität herstellen.',
-      Mehrwert: ['Abweichungen früh erkannt', 'SME-Entscheidungen dokumentiert', 'Gezielte Retests'],
-      Input: ['Golden Dataset', 'Alt- und Prototyp-Läufe', 'Toleranzen'],
-      Aktivitäten: ['Vergleich Alt/Neu', 'Varianz-Analyse', 'Decision Logging'],
-      Deliverables: ['Comparator Output', 'Decision Log', 'DQ/Reconciliation Sicht']
+      Ziel: 'Fachlich belastbare Baseline vor Refactoring festschreiben.',
+      Mehrwert: ['Go/No-Go auf messbarer Toleranz', 'Abweichungen mit fachlichem Entscheid dokumentiert', 'Auditierbare Evidence aus CTL-Tabellen'],
+      Input: ['Lineage Matrix (CORE → DM)', 'DQ/Reconciliation Regeln inkl. Toleranz ±1.00', 'Golden Dataset mit kritischen Sonderfällen'],
+      Aktivitäten: ['KPI-Reconciliation Alt (DAWIS) vs Neu (Prototype)', 'Blocking DQ Assertions prüfen', 'Decision Log inkl. Ursache, Entscheidung, Retest'],
+      Deliverables: ['Baseline Dashboard', 'Decision Log', 'CTL-basierte Evidence (DQ, RECON, RUN Status)']
     },
-    talk: ['Vergleich macht Abweichungen sofort sichtbar.', 'Decision Log hält fachliche Entscheidungen fest.', 'Toleranzen steuern objektive Freigabe.']
+    talk: ['Die Vergleichslogik nutzt die gleiche Grain wie in der Doku beschrieben.', 'Nur ein PASS auf DQ + RECON + Run Status ergibt eine akzeptierte Baseline.', 'Das Decision Log bindet Business-Entscheid direkt an technische Kontrollevidenz.']
   },
   'phase-6': {
     title: 'Phase 6: Refactoring & Improvement',
@@ -801,10 +801,10 @@ function renderDeepDive(route){
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', frameClass = 'aspect-video' }){
   return `
     <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+      <div class="canvas-frame canvas-grid relative ${frameClass}">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -1256,97 +1256,119 @@ function canvasPhase4(){
 
 function canvasPhase5(){
   const body = `
-    <div class="flex flex-wrap items-center gap-2">
-      <select class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
-        <option>Netto Provision</option>
-      </select>
-      <div class="text-xs text-slate-400">Date range</div>
-      <input type="date" class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
-      <input type="date" class="px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
-      <div class="ml-auto flex items-center gap-2">
-        <span class="text-xs text-slate-400">Tolerance</span>
-        <input value="±1.00" class="w-24 px-3 py-2 rounded-xl bg-base-900 border border-slate-800 text-sm">
+    <div class="grid gap-3 md:grid-cols-12">
+      <div class="md:col-span-7 rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="text-xs text-slate-400">Baseline scope (aus documentation/05 + /06)</div>
+        <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+          ${[
+            ['Window','g_min_event_date rolling'],
+            ['Tolerance','±1.00 (blocking)'],
+            ['Run status gate','CTL_BATCH_RUN = SUCCEEDED'],
+            ['Reconciliation store','CTL_RECON_RESULT'],
+            ['DQ store','CTL_DQ_RESULT'],
+            ['Golden entities','Accrual, Payout, Adjustment']
+          ].map(([k,v])=>`<div class="rounded-xl border border-slate-800 bg-base-900 px-3 py-2"><span class="text-slate-400">${k}</span><div class="text-slate-100 font-medium">${v}</div></div>`).join('')}
+        </div>
+      </div>
+      <div class="md:col-span-5 rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="font-semibold text-sm">Validation gate</div>
+        <div class="mt-2 text-xs text-slate-300">Baseline wird nur akzeptiert, wenn DQ + RECON + Run Status gleichzeitig grün sind.</div>
+        <div class="mt-3 grid gap-2 text-xs">
+          <div class="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2 py-1.5">DQ assertions: PASS (0 blocking failures)</div>
+          <div class="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2 py-1.5">Reconciliation metrics: PASS (all within ±1.00)</div>
+          <div class="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2 py-1.5">Batch lifecycle: RUN_END + SUCCEEDED</div>
+        </div>
       </div>
     </div>
 
-    <div class="grid md:grid-cols-3 gap-3 mt-3">
-      ${compareCard('ALT (DAWIS)', "12’345’678.90", "1’234’567")}
-      ${compareCard('NEU (Prototype)', "12’345’120.10", "1’234’550")}
-      ${varianceCard()}
+    <div class="rounded-2xl border border-slate-800 bg-base-850 p-3 mt-3">
+      <div class="font-semibold text-sm">Reconciliation Comparator (CORE vs DM)</div>
+      <div class="text-xs text-slate-400">Metriken und Toleranz gemäß quality/02_reconciliation_core_vs_dm.sas</div>
+      <div class="overflow-auto mt-2">
+        <table class="w-full min-w-[760px] text-xs">
+          <thead class="text-slate-400">
+            <tr>
+              <th class="text-left py-1.5 pr-3">Metric</th>
+              <th class="text-left py-1.5 pr-3">Source (CORE)</th>
+              <th class="text-left py-1.5 pr-3">Target (DM)</th>
+              <th class="text-left py-1.5 pr-3">Variance</th>
+              <th class="text-left py-1.5 pr-3">Tolerance</th>
+              <th class="text-left py-1.5 pr-3">Result</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-200/90">
+            ${[
+              ['RECON_ACCRUAL_NET_LOCAL','12’345’678.90','12’345’678.10','-0.80','±1.00','PASS'],
+              ['RECON_PAYOUT_LOCAL','5’221’120.50','5’221’119.90','-0.60','±1.00','PASS'],
+              ['RECON_ADJUSTMENT_LOCAL','-102’420.00','-102’419.80','+0.20','±1.00','PASS']
+            ].map(r=>`<tr class="border-t border-slate-800">${r.map((c,i)=>`<td class="py-1.5 pr-3 whitespace-nowrap ${i===5?'font-semibold':''}">${i===5?`<span class="px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">${c}</span>`:c}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-3 mt-3">
-      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
-        <div class="font-semibold text-sm">Golden Dataset Samples</div>
+    <div class="grid md:grid-cols-12 gap-3 mt-3">
+      <div class="md:col-span-5 rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="font-semibold text-sm">Golden Dataset (kritische Fälle)</div>
         <div class="overflow-auto mt-2">
           <table class="w-full text-xs">
             <thead class="text-slate-400">
-              <tr><th class="text-left py-1">policy</th><th class="text-left py-1">agent</th><th class="text-left py-1">event_date</th><th class="text-left py-1">amount_chf</th><th class="text-left py-1">rule_flags</th></tr>
+              <tr><th class="text-left py-1">fact</th><th class="text-left py-1">case</th><th class="text-left py-1">expected behavior</th><th class="text-left py-1">status</th></tr>
             </thead>
             <tbody class="text-slate-200/90">
               ${[
-                ['P-100','A-9','2026-02-01','55.20','fx_fallback'],
-                ['P-101','A-2','2026-02-02','40.10','-'],
-                ['P-102','A-3','2026-02-03','12.00','-'],
-                ['P-103','A-9','2026-02-03','87.40','late_rate'],
-                ['P-104','A-1','2026-02-04','20.00','-'],
+                ['FKT_VERTRIEBSPROVISIONSEREIGNIS','missing FX','reject non-reporting ccy without FX','PASS'],
+                ['FKT_PROVISIONSAUSZAHLUNG','missing provisionsereignis_key','blocking DQ_PAYOUT_FK','PASS'],
+                ['FKT_PROVISIONSANPASSUNG','missing provisionsereignis_key','blocking DQ_ADJUSTMENT_FK','PASS'],
+                ['BR_POLICE_VERMITTLER_AUFTEILUNG','split <> 100','blocking DQ_BR_SPLIT_100','PASS'],
+                ['FKT_VERTRIEBSPROVISIONSEREIGNIS','duplicate natural grain','blocking DQ_VPE_DUP_GRAIN','PASS'],
               ].map(r=>`<tr class="border-t border-slate-800">${r.map(c=>`<td class="py-1 pr-3 whitespace-nowrap">${c}</td>`).join('')}</tr>`).join('')}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
-        <div class="font-semibold text-sm">Decision Log</div>
+      <div class="md:col-span-2 rounded-2xl border border-slate-800 bg-base-850 p-3 flex flex-col items-center">
+        <div class="font-semibold text-sm text-center">Baseline Flow</div>
+        <div class="text-[11px] text-slate-400 text-center">Mitte bis unten</div>
+        <div class="mt-3 flex-1 w-full min-h-[320px] relative">
+          <div class="absolute left-1/2 top-2 bottom-2 w-px bg-emerald-500/35 -translate-x-1/2"></div>
+          <div class="relative z-10 h-full flex flex-col justify-between items-center text-[11px]">
+            <span class="px-2 py-1 rounded-full border border-slate-700 bg-base-900">Golden</span>
+            <span class="px-2 py-1 rounded-full border border-slate-700 bg-base-900">DQ</span>
+            <span class="px-2 py-1 rounded-full border border-slate-700 bg-base-900">RECON</span>
+            <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Decision</span>
+          </div>
+        </div>
+        <div class="mt-2 grid gap-1 w-full text-[10px]">
+          <div class="rounded border border-slate-800 bg-base-900 p-1.5 text-center">CTL_DQ_RESULT</div>
+          <div class="rounded border border-slate-800 bg-base-900 p-1.5 text-center">CTL_RECON_RESULT</div>
+          <div class="rounded border border-slate-800 bg-base-900 p-1.5 text-center">Decision Log</div>
+        </div>
+      </div>
+
+      <div class="md:col-span-5 rounded-2xl border border-slate-800 bg-base-850 p-3">
+        <div class="font-semibold text-sm">Decision Log (SME + Tech Lead)</div>
         <ol class="mt-2 space-y-2 text-sm list-decimal ml-5 text-slate-200/90">
-          <li>Variance traced to missing FX rate (fallback)</li>
-          <li>SME decision: accept fallback rule</li>
-          <li>Update mapping spec + retest</li>
+          <li>Variance im Accrual-Netto identifiziert und auf FX fallback in CORE_FX_RATE zurückgeführt.</li>
+          <li>SME bestätigt Fallback-Reihenfolge: exact rate → D-1 → Monatsmittel → 1.00.</li>
+          <li>Mapping/Spec ergänzt, Retest ausgeführt, alle RECON-Metriken innerhalb ±1.00.</li>
         </ol>
         <div class="mt-3 rounded-xl border border-slate-800 bg-base-900 p-3 text-xs text-slate-400">
-          outcome: baseline accepted after rule clarification
+          outcome: baseline accepted • decision id BL-05-014 • evidence linked to CTL_DQ_RESULT + CTL_RECON_RESULT
         </div>
       </div>
     </div>
   `;
 
   return canvasShell({
-    title: 'Alt vs Neu Comparator (Golden Dataset)',
-    subtitle: 'Toleranz-getriebene Entscheidung + dokumentierter Trace.',
-    legendBadges: ['Comparator', 'Decision log'],
+    title: 'Baseline Validation Dashboard (Phase 5)',
+    subtitle: 'Lineage-basierter Alt/Neu Nachweis mit CTL-Evidence und Golden Cases.',
+    legendBadges: ['DQ & RECON controls', 'Decision-ready'],
     bodyHtml: body,
-    footerHtml: 'Phase 5 • Baseline before refactoring = less risk'
+    footerHtml: 'Phase 5 • Baseline fixiert vor Refactoring (audit-ready)',
+    frameClass: 'min-h-[900px]'
   });
-
-  function compareCard(title, sum, rows){
-    return `
-      <div class="rounded-2xl border border-slate-800 bg-base-850 p-4">
-        <div class="flex items-center justify-between">
-          <div class="font-semibold">${title}</div>
-          <span class="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/40 text-slate-300">snapshot</span>
-        </div>
-        <div class="mt-3 text-sm text-slate-400">Sum</div>
-        <div class="text-lg font-semibold">${sum}</div>
-        <div class="mt-2 text-sm text-slate-400">Rows</div>
-        <div class="font-semibold">${rows}</div>
-      </div>
-    `;
-  }
-  function varianceCard(){
-    return `
-      <div class="rounded-2xl border border-red-500/35 bg-red-500/8 p-4">
-        <div class="flex items-center justify-between">
-          <div class="font-semibold">Variance</div>
-          <span class="text-[10px] px-2 py-0.5 rounded-full border border-red-500/35 bg-red-500/10 text-red-200">FAIL</span>
-        </div>
-        <div class="mt-3 text-sm text-slate-400">Δ Sum</div>
-        <div class="text-lg font-semibold text-red-100">-558.80</div>
-        <div class="mt-2 text-sm text-slate-400">Δ Rows</div>
-        <div class="font-semibold text-red-100">-17</div>
-        <div class="mt-3 text-xs text-slate-300">over tolerance → trace & decision</div>
-      </div>
-    `;
-  }
 }
 
 function canvasPhase6(){
@@ -1683,7 +1705,7 @@ function wireInteractions(route){
   // Fullscreen button for canvas
   document.querySelectorAll('[data-action="fullscreen"]').forEach(btn => {
     btn.onclick = () => {
-      const canvas = btn.closest('section')?.querySelector('.aspect-video');
+      const canvas = btn.closest('section')?.querySelector('.canvas-frame');
       if(!canvas) return;
       if(document.fullscreenElement) document.exitFullscreen();
       else canvas.requestFullscreen?.();
@@ -1723,7 +1745,7 @@ function wireInteractions(route){
   document.querySelectorAll('.tabBtn').forEach(btn => {
     btn.onclick = () => {
       const tab = btn.dataset.tab;
-      const root = btn.closest('.aspect-video') || document;
+      const root = btn.closest('.canvas-frame') || document;
       root.querySelectorAll('.tabPane').forEach(p => p.classList.add('hidden'));
       const pane = root.querySelector(`#tab-${tab}`);
       if(pane) pane.classList.remove('hidden');
