@@ -801,10 +801,10 @@ function renderDeepDive(route){
 /* ================================
    Canvas shell
    ================================ */
-function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '' }){
+function canvasShell({ title, subtitle, legendBadges = [], controlsHtml = '', bodyHtml = '', footerHtml = '', frameClass = 'aspect-video' }){
   return `
     <section class="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-base-900 shadow-soft overflow-hidden">
-      <div class="aspect-video canvas-grid relative">
+      <div class="canvas-frame canvas-grid relative ${frameClass}">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="h-full flex flex-col">
@@ -1281,25 +1281,6 @@ function canvasPhase5(){
       </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-800 bg-base-850 p-4 mt-3">
-      <div class="font-semibold text-sm text-center">Baseline Evidence Flow (Mitte)</div>
-      <div class="text-xs text-slate-400 text-center">Visualisiert, wie Golden Dataset + DQ + RECON in die Freigabeentscheidung laufen.</div>
-      <div class="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
-        <span class="px-3 py-1.5 rounded-full border border-slate-700 bg-base-900">Golden Dataset</span>
-        <span class="text-emerald-300/70">→</span>
-        <span class="px-3 py-1.5 rounded-full border border-slate-700 bg-base-900">DQ Checks</span>
-        <span class="text-emerald-300/70">→</span>
-        <span class="px-3 py-1.5 rounded-full border border-slate-700 bg-base-900">RECON Metrics</span>
-        <span class="text-emerald-300/70">→</span>
-        <span class="px-3 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Baseline Decision</span>
-      </div>
-      <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-        <div class="rounded-xl border border-slate-800 bg-base-900 p-2 text-center">CTL_DQ_RESULT<br><span class="text-slate-400">Blocking assertions</span></div>
-        <div class="rounded-xl border border-slate-800 bg-base-900 p-2 text-center">CTL_RECON_RESULT<br><span class="text-slate-400">Tolerance ±1.00</span></div>
-        <div class="rounded-xl border border-slate-800 bg-base-900 p-2 text-center">Decision Log<br><span class="text-slate-400">SME + Tech Lead</span></div>
-      </div>
-    </div>
-
     <div class="rounded-2xl border border-slate-800 bg-base-850 p-3 mt-3">
       <div class="font-semibold text-sm">Reconciliation Comparator (CORE vs DM)</div>
       <div class="text-xs text-slate-400">Metriken und Toleranz gemäß quality/02_reconciliation_core_vs_dm.sas</div>
@@ -1326,8 +1307,8 @@ function canvasPhase5(){
       </div>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-3 mt-3">
-      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+    <div class="grid md:grid-cols-12 gap-3 mt-3">
+      <div class="md:col-span-5 rounded-2xl border border-slate-800 bg-base-850 p-3">
         <div class="font-semibold text-sm">Golden Dataset (kritische Fälle)</div>
         <div class="overflow-auto mt-2">
           <table class="w-full text-xs">
@@ -1347,7 +1328,26 @@ function canvasPhase5(){
         </div>
       </div>
 
-      <div class="rounded-2xl border border-slate-800 bg-base-850 p-3">
+      <div class="md:col-span-2 rounded-2xl border border-slate-800 bg-base-850 p-3 flex flex-col items-center">
+        <div class="font-semibold text-sm text-center">Baseline Flow</div>
+        <div class="text-[11px] text-slate-400 text-center">Mitte bis unten</div>
+        <div class="mt-3 flex-1 w-full min-h-[320px] relative">
+          <div class="absolute left-1/2 top-2 bottom-2 w-px bg-emerald-500/35 -translate-x-1/2"></div>
+          <div class="relative z-10 h-full flex flex-col justify-between items-center text-[11px]">
+            <span class="px-2 py-1 rounded-full border border-slate-700 bg-base-900">Golden</span>
+            <span class="px-2 py-1 rounded-full border border-slate-700 bg-base-900">DQ</span>
+            <span class="px-2 py-1 rounded-full border border-slate-700 bg-base-900">RECON</span>
+            <span class="px-2 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-200">Decision</span>
+          </div>
+        </div>
+        <div class="mt-2 grid gap-1 w-full text-[10px]">
+          <div class="rounded border border-slate-800 bg-base-900 p-1.5 text-center">CTL_DQ_RESULT</div>
+          <div class="rounded border border-slate-800 bg-base-900 p-1.5 text-center">CTL_RECON_RESULT</div>
+          <div class="rounded border border-slate-800 bg-base-900 p-1.5 text-center">Decision Log</div>
+        </div>
+      </div>
+
+      <div class="md:col-span-5 rounded-2xl border border-slate-800 bg-base-850 p-3">
         <div class="font-semibold text-sm">Decision Log (SME + Tech Lead)</div>
         <ol class="mt-2 space-y-2 text-sm list-decimal ml-5 text-slate-200/90">
           <li>Variance im Accrual-Netto identifiziert und auf FX fallback in CORE_FX_RATE zurückgeführt.</li>
@@ -1366,7 +1366,8 @@ function canvasPhase5(){
     subtitle: 'Lineage-basierter Alt/Neu Nachweis mit CTL-Evidence und Golden Cases.',
     legendBadges: ['DQ & RECON controls', 'Decision-ready'],
     bodyHtml: body,
-    footerHtml: 'Phase 5 • Baseline fixiert vor Refactoring (audit-ready)'
+    footerHtml: 'Phase 5 • Baseline fixiert vor Refactoring (audit-ready)',
+    frameClass: 'min-h-[900px]'
   });
 }
 
@@ -1704,7 +1705,7 @@ function wireInteractions(route){
   // Fullscreen button for canvas
   document.querySelectorAll('[data-action="fullscreen"]').forEach(btn => {
     btn.onclick = () => {
-      const canvas = btn.closest('section')?.querySelector('.aspect-video');
+      const canvas = btn.closest('section')?.querySelector('.canvas-frame');
       if(!canvas) return;
       if(document.fullscreenElement) document.exitFullscreen();
       else canvas.requestFullscreen?.();
@@ -1744,7 +1745,7 @@ function wireInteractions(route){
   document.querySelectorAll('.tabBtn').forEach(btn => {
     btn.onclick = () => {
       const tab = btn.dataset.tab;
-      const root = btn.closest('.aspect-video') || document;
+      const root = btn.closest('.canvas-frame') || document;
       root.querySelectorAll('.tabPane').forEach(p => p.classList.add('hidden'));
       const pane = root.querySelector(`#tab-${tab}`);
       if(pane) pane.classList.remove('hidden');
